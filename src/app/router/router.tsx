@@ -6,10 +6,6 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
-    children: [
-      { index: true, element: <FoundationPage /> },
-      { path: 'admin', element: <FoundationPage area="Ventiq Admin" /> },
-      { path: 'dashboard', element: <FoundationPage area="Ventiq Dashboard" /> },
-    ],
+    children: [{ index: true, element: <FoundationPage /> }],
   },
 ])
