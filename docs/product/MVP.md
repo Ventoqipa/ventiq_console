@@ -1,45 +1,47 @@
-# MVP Delivery Path
+# Ventiq Console MVP
 
-## Milestone 1 - Internal Admin
+## Objective
 
-Deliver the first complete vertical slice:
+Provide Ventoqipa with the minimum internal tooling required to onboard and administer B2B customers.
 
-- Login boundary
-- Admin shell
+## MVP scope
+
+- Internal admin login boundary
+- Console shell
 - Customer list
 - Create customer
 - Customer detail
 - Create initial client administrator
-- Activate/suspend customer
+- Activate customer
+- Suspend customer
+- Basic status/error handling
 
-Do not implement API behavior in the Console. Use application ports and infrastructure adapters once the API contract exists.
+## Out of scope
 
-## Milestone 2 - B2B foundation
+The following belong to other Ventiq projects and must not be implemented here:
 
-- Client login
-- Project management
-- Platform association
-- API key generation, rotation, and revocation
-
-## Milestone 3 - Advertising control
-
-- Provider connection views
+- Customer B2B Dashboard
+- Customer project management
+- Platforms
+- SDK API key management
+- Provider connections
 - Placements
-- Policies
-- Ads enabled/disabled
-- Remote configuration visibility
+- Ads ON/OFF
+- Advertising policies
+- Events and telemetry
+- Monitoring
+- Reports and projections
+- SDK implementation
 
-## Milestone 4 - Monitoring
+## First demo
 
-- REQUESTED
-- LOADED
-- IMPRESSION
-- CLICKED
-- FAILED
-- SKIPPED
-- KPIs and event explorer
-- Basic trends
+```
+Internal Login
+  -> Customers
+  -> Create Customer
+  -> Customer Detail
+  -> Create Client Administrator
+  -> Activate Customer
+```
 
-## Demo story
-
-Ventoqipa creates a customer. The client creates a project and SDK key. A client application uses the SDK. The client enables ads, observes telemetry, then disables a placement without rebuilding the client. The SDK follows the remote configuration and reports SKIPPED. The Dashboard reflects the change.
+The demo ends when Ventoqipa has successfully provisioned a customer that is ready to continue in the separate Ventiq Dashboard.
