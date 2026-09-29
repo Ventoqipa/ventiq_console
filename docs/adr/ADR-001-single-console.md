@@ -1,18 +1,18 @@
-# ADR-001: One Console for Admin and B2B
+# ADR-001: Console Is Internal Administration Only
 
 - Status: Accepted
 
 ## Context
 
-Ventiq needs an internal Ventoqipa Admin and a customer-facing B2B Dashboard. Both are web experiences using the same platform API and shared design/application foundations.
+Ventiq has different user experiences with different responsibilities: internal Ventoqipa administration and a customer-facing B2B Dashboard.
 
 ## Decision
 
-Host both experiences in `ventiq_console` while preserving explicit route, presentation, authorization, and product boundaries.
+`ventiq_console` contains only the internal Ventoqipa administration experience. The B2B customer Dashboard is a separate project and repository. Both will consume the unified Ventiq API.
 
 ## Consequences
 
-- Shared deployment and frontend foundations.
-- Less duplicated infrastructure.
-- Authorization and navigation must keep internal and customer capabilities clearly separated.
-- A future split remains possible if operational needs justify it.
+- Clear product responsibility and deployment boundary.
+- Internal administration cannot accidentally grow into the customer product.
+- Console scope stays focused on customer onboarding and account administration.
+- Shared behavior must live behind Ventiq API contracts rather than frontend coupling.
