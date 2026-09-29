@@ -3,7 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        # Temporary bootstrap: npm install also creates the lockfile in the build
+        # environment. Commit package-lock.json and switch this back to npm ci.
+        - npm install
     build:
       commands:
         - npm run build
