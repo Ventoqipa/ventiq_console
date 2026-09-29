@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { FoundationPage } from './FoundationPage'
 
 describe('FoundationPage', () => {
-  it('renders the selected product area', () => {
+  it('renders the Ventiq Console foundation', () => {
     render(<FoundationPage />)
-    expect(screen.getByRole('heading', { name: 'Ventiq Console' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Ventiq Console' }),
+    ).toBeInTheDocument()
   })
 })
