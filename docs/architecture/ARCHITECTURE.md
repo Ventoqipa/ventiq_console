@@ -1,22 +1,30 @@
 # Ventiq Console Architecture
 
-## Context
+## Responsibility
 
-Ventiq Console is one web application with two user-facing areas:
-
-1. **Admin** for Ventoqipa internal operations.
-2. **Dashboard** for B2B customers.
-
-Both consume the same Ventiq API. The SDK also consumes that API independently; SDK implementation does not belong in this repository.
+Ventiq Console is the **internal Ventoqipa administration application**. It is not the B2B customer Dashboard and it does not contain SDK or advertising-management features.
 
 ```mermaid
 flowchart LR
-  Internal[Ventoqipa Admin] --> Console[Ventiq Console]
-  Client[Client Admin] --> Console
+  Admin[Ventoqipa Admin] --> Console[Ventiq Console]
   Console --> API[Ventiq API]
-  SDK[Ventiq SDK] --> API
   API --> Data[(Platform Data)]
-  API --> Providers[Ad Providers]
+  Dashboard[Ventiq Dashboard] --> API
+  SDK[Ventiq SDK] --> API
+```
+
+The Dashboard and SDK are shown only as platform context. They are separate projects.
+
+## Console scope
+
+```mermaid
+flowchart TB
+  Console[Ventiq Console] --> Auth[Internal authentication]
+  Console --> Customers[Customers]
+  Customers --> Create[Create customer]
+  Customers --> Detail[Customer detail]
+  Customers --> Status[Activate / Suspend]
+  Customers --> Users[Initial client administrators]
 ```
 
 ## Dependency rule
@@ -31,37 +39,23 @@ flowchart LR
 ```
 
 ### Domain
-Business concepts and invariants. No React, HTTP, browser, or vendor dependencies.
+Internal administration concepts and business rules. No React, HTTP, browser, or vendor dependencies.
 
 ### Application
-Use cases and ports. Coordinates domain behavior without knowing concrete infrastructure.
+Admin use cases and required ports.
 
 ### Infrastructure
-Concrete Ventiq API clients and external/browser adapters.
+Concrete Ventiq API clients and browser adapters.
 
 ### Presentation
-Routes, pages, layouts, components, and UI state for Admin and Dashboard.
-
-## Product areas
-
-```mermaid
-flowchart TB
-  Console --> Admin
-  Console --> B2B[Dashboard B2B]
-  Admin --> Customers
-  Admin --> ClientUsers[Client administrators]
-  B2B --> Projects
-  B2B --> ApiKeys[API Keys]
-  B2B --> Ads[Ads configuration]
-  B2B --> Monitoring
-```
+Internal routes, pages, layouts, components, and view state.
 
 ## Architectural constraints
 
 - Do not place business rules in React components.
-- Do not call `fetch` directly from pages/components.
-- Do not expose provider credentials or backend secrets.
-- API authorization is authoritative; route guards are not security boundaries.
-- Keep Admin and B2B responsibilities explicit.
-- Prefer vertical delivery over creating every future folder in advance.
-- Add abstractions because a dependency or variation requires them, not because a pattern exists.
+- Do not call external APIs directly from pages/components.
+- Do not expose backend secrets.
+- API authorization is authoritative; route guards are UX boundaries only.
+- Do not add B2B Dashboard features to this repository.
+- Do not add SDK code to this repository.
+- Prefer vertical delivery over speculative structure.
