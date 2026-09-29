@@ -2,40 +2,35 @@
 
 Ventiq Console is the web control plane for the Ventiq advertising platform.
 
-It serves two experiences from one React application:
+It serves **one purpose**: internal Ventoqipa operations for customer onboarding and account administration.
 
-- **Ventiq Admin** — internal Ventoqipa operations for customer onboarding and account administration.
-- **Ventiq Dashboard** — B2B customer workspace for projects, API keys, ad configuration, placements, monitoring, and reporting.
-
-The Console consumes a **single Ventiq API** shared by Admin, Dashboard, and Ventiq SDK clients.
+The customer-facing B2B Dashboard is a separate project and repository. Ventiq Console consumes the unified **Ventiq API**, which is shared at platform level by Console, Dashboard, and SDK clients.
 
 > This repository is intentionally a foundation, not a completed solution. The trainee is expected to implement product use cases and justify architecture decisions.
 
 ## Product flow
 
-```mermaid
+\`\`\`mermaid
 flowchart LR
-  VA[Ventoqipa Admin] -->|creates customer| API[Ventiq API]
+  VA[Ventoqipa Admin] --> Console[Ventiq Console]
+  Console -->|customer onboarding| API[Ventiq API]
   API --> DB[(Platform Data)]
-  CA[Client Admin] -->|uses B2B Dashboard| API
-  CA -->|creates project and API key| API
-  SDK[Ventiq SDK] -->|configuration + telemetry| API
-  APP[Mobile / Web Project] --> SDK
-  API -->|monitoring + reports| CA
-```
+  Dashboard[Ventiq Dashboard] --> API
+  SDK[Ventiq SDK] --> API
+\`\`\`
 
 ## Console boundaries
 
-```mermaid
+\`\`\`mermaid
 flowchart TB
   Console[Ventiq Console]
-  Console --> Admin[Admin / Internal]
-  Console --> Dashboard[Dashboard / B2B]
-  Admin --> Shared[Shared application boundaries]
-  Dashboard --> Shared
-  Shared --> ApiClient[Ventiq API Client]
+  Console --> Auth[Internal authentication]
+  Console --> Customers[Customers]
+  Customers --> Users[Client administrators]
+  Customers --> Status[Activate / Suspend]
+  Console --> ApiClient[Ventiq API Client]
   ApiClient --> Api[Ventiq API]
-```
+\`\`\`
 
 ## Clean Architecture direction
 
@@ -74,9 +69,9 @@ Login
   -> Activate / suspend customer
 ```
 
-The next milestone introduces the B2B customer flow:
+The Console MVP ends after the customer is provisioned and ready to continue in the separate Ventiq Dashboard.
 
-```
+\`\`\`
 Client login
   -> Project
   -> Platform
@@ -94,7 +89,7 @@ src/
   domain/               # enterprise/product rules
   application/          # use cases and ports
   infrastructure/       # external implementations
-  presentation/         # admin + dashboard UI
+  presentation/         # internal administration UI
   shared/               # truly shared UI/types/utilities
 docs/
   architecture/
@@ -172,11 +167,10 @@ Review AWS Amplify Hosting documentation if the platform changes its routing con
 
 ## Security principles
 
-- Ventoqipa creates the customer account.
-- Customers create and manage SDK API keys from the B2B Dashboard.
-- Human credentials and SDK credentials are different concepts.
-- SDK secrets must not be confused with user passwords.
-- Provider secrets remain server-side.
+- Ventoqipa creates and administers customer accounts from this Console.
+- Customer project, API key, advertising, and monitoring features belong to the separate Dashboard.
+- Provider and SDK credentials do not belong in this repository.
+- Backend secrets remain server-side.
 - Client-side authorization is a UX boundary only; the API must enforce authorization.
 - Customer resources must be tenant-isolated by the API.
 - Never commit credentials.
