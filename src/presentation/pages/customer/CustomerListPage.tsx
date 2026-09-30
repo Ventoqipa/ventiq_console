@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Customer } from '../../../domain/customer/customer'
-import { ApiCustomerRepository } from '../../../infrastructure/repositories/apiCustomerRepository'
+import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
 import { GetCustomersUseCase } from '../../../application/useCases/customer/getCustomers.usecase'
 
-const customerRepository = new ApiCustomerRepository()
+const customerRepository = new HttpCustomerRepository()
 const getCustomersUseCase = new GetCustomersUseCase(customerRepository)
 
 // Fallback mock data in case backend API is not available

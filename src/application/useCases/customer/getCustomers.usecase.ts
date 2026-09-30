@@ -5,6 +5,6 @@ export class GetCustomersUseCase {
   constructor(private readonly customerRepository: CustomerRepository) {}
 
   async execute(): Promise<Customer[]> {
-    return this.customerRepository.getAll()
+    return this.customerRepository.list()
   }
 }
