@@ -87,9 +87,9 @@ export const FoundationPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid Secundario: Tendencia y Alertas Recientes */}
+      {/* Secondary Grid: Trend and Recent Alerts */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-        {/* Panel de Tendencia */}
+        {/* Trend Panel */}
         <div style={{ backgroundColor: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '8px', padding: '1.5rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#18181b', margin: '0 0 1rem 0' }}>
             Requests vs. Impressions — Last 7 days
@@ -99,10 +99,10 @@ export const FoundationPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Panel de Alertas Recientes */}
+        {/* Recent Alerts Panel */}
         <div style={{ backgroundColor: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '8px', padding: '1.5rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#18181b', margin: '0 0 1rem 0' }}>
-            Alertas recientes
+            Recent Alerts
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '0.75rem', borderRadius: '6px', fontSize: '0.8rem', color: '#991b1b' }}>

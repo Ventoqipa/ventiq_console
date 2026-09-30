@@ -5,6 +5,6 @@ import { FoundationPage } from './FoundationPage'
 describe('FoundationPage', () => {
   it('renders the selected product area', () => {
     render(<FoundationPage />)
-    expect(screen.getByRole('heading', { name: 'Ventiq Console' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
   })
 })

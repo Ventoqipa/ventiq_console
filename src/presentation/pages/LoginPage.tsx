@@ -12,10 +12,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
-      setError('Por favor ingresa tu correo y contraseña.')
+      setError('Please enter your email and password.')
       return
     }
-    // Autenticación simulada
+    // Simulated authentication: store session in local storage
+    localStorage.setItem('user', JSON.stringify({ email }))
+    localStorage.setItem('token', 'simulated-jwt-token')
+
     setError(null)
     onLoginSuccess()
   }
@@ -44,7 +47,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
         }}
       >
-        {/* Header con la identidad visual del Dashboard */}
+        {/* Header with Dashboard Visual Identity */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <span
             style={{
@@ -76,11 +79,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               marginTop: '0.5rem',
             }}
           >
-            Ingresa tus credenciales para acceder a la consola
+            Enter your credentials to access the console
           </p>
         </div>
 
-        {/* Mensaje de Error */}
+        {/* Error Message */}
         {error && (
           <div
             style={{
@@ -98,7 +101,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* Formulario */}
+        {/* Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label
@@ -113,7 +116,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 marginBottom: '0.4rem',
               }}
             >
-              CORREO ELECTRÓNICO
+              EMAIL ADDRESS
             </label>
             <input
               id="email"
@@ -147,7 +150,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 marginBottom: '0.4rem',
               }}
             >
-              CONTRASEÑA
+              PASSWORD
             </label>
             <input
               id="password"
@@ -183,7 +186,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               transition: 'background-color 0.2s',
             }}
           >
-            Iniciar Sesión
+            Sign In
           </button>
         </form>
 
