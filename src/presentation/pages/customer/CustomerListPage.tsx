@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Customer, CreateCustomerDTO } from '../../../domain/customer/customer'
+import { Customer, CreateCustomerDTO, CustomerStatus } from '../../../domain/customer/customer'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
 import { GetCustomersUseCase } from '../../../application/useCases/customer/getCustomers.usecase'
 import { CreateCustomerUseCase } from '../../../application/useCases/customer/createCustomer.usecase'
@@ -43,6 +43,11 @@ export const CustomerListPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+
+  // Estados de Filtro (Tarjeta 8)
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<CustomerStatus | 'ALL'>('ALL')
+
   const navigate = useNavigate()
 
   const fetchCustomers = () => {
@@ -64,13 +69,33 @@ export const CustomerListPage: React.FC = () => {
     fetchCustomers()
   }, [])
 
+  // Filtrado reactivo en la UI
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((customer) => {
+      const searchLower = searchTerm.toLowerCase().trim()
+      const matchesSearch =
+        !searchLower ||
+        customer.name.toLowerCase().includes(searchLower) ||
+        (customer.slug?.toLowerCase().includes(searchLower) ?? false)
+
+      const matchesStatus = statusFilter === 'ALL' || customer.status === statusFilter
+
+      return matchesSearch && matchesStatus
+    })
+  }, [customers, searchTerm, statusFilter])
+
+  const handleResetFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('ALL')
+  }
+
+  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'ALL'
+
   const handleCreateCustomer = async (data: CreateCustomerDTO) => {
     try {
       const created = await createCustomerUseCase.execute(data)
-      // Agregamos el cliente nuevo al estado local
       setCustomers((prev) => [created, ...prev])
     } catch {
-      // Si falla la API real, agregamos un mock local simulado para mantener fluidez en el desarrollo
       const newMockCustomer: Customer = {
         id: `cust-${Date.now()}`,
         name: data.name,
@@ -153,6 +178,69 @@ export const CustomerListPage: React.FC = () => {
         >
           + New Customer
         </button>
+      </div>
+
+      {/* Control Bar: Búsqueda y Filtros */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.75rem',
+          alignItems: 'center',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <input
+          type="text"
+          role="searchbox"
+          placeholder="Search by company name or slug..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            padding: '0.5rem 0.75rem',
+            borderRadius: '6px',
+            border: '1px solid #d4d4d8',
+            fontSize: '0.85rem',
+            minWidth: '260px',
+            outline: 'none',
+          }}
+        />
+
+        <select
+          role="combobox"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as CustomerStatus | 'ALL')}
+          style={{
+            padding: '0.5rem 0.75rem',
+            borderRadius: '6px',
+            border: '1px solid #d4d4d8',
+            fontSize: '0.85rem',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="SUSPENDED">SUSPENDED</option>
+        </select>
+
+        {hasActiveFilters && (
+          <button
+            onClick={handleResetFilters}
+            style={{
+              padding: '0.5rem 0.85rem',
+              borderRadius: '6px',
+              border: '1px solid #d4d4d8',
+              backgroundColor: '#f4f4f5',
+              color: '#3f3f46',
+              fontSize: '0.825rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {/* Warning Alert Banner when API fails */}
@@ -266,21 +354,46 @@ export const CustomerListPage: React.FC = () => {
                   Loading customers...
                 </td>
               </tr>
-            ) : customers.length === 0 ? (
+            ) : filteredCustomers.length === 0 ? (
               <tr>
                 <td
                   colSpan={4}
                   style={{
-                    padding: '2.5rem',
+                    padding: '3rem 1rem',
                     textAlign: 'center',
-                    color: '#a1a1aa',
                   }}
                 >
-                  No customers found.
+                  <div style={{ color: '#71717a', fontSize: '0.875rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>
+                      No customers found
+                    </p>
+                    <p style={{ margin: '0 0 1rem 0', color: '#a1a1aa', fontSize: '0.8rem' }}>
+                      {hasActiveFilters
+                        ? 'No tenants match your current search or status criteria.'
+                        : 'There are no registered customers yet.'}
+                    </p>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={handleResetFilters}
+                        style={{
+                          backgroundColor: '#18181b',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
-              customers.map((c) => (
+              filteredCustomers.map((c) => (
                 <tr
                   key={c.id}
                   onClick={() => navigate(`/customers/${c.id}`)}
