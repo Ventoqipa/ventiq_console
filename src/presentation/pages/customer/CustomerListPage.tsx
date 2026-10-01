@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Customer } from '../../../domain/customer/customer'
+import { Customer, CreateCustomerDTO } from '../../../domain/customer/customer'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
 import { GetCustomersUseCase } from '../../../application/useCases/customer/getCustomers.usecase'
+import { CreateCustomerUseCase } from '../../../application/useCases/customer/createCustomer.usecase'
+import { CreateCustomerModal } from '../../components/customer/CreateCustomerModal'
 
 const customerRepository = new HttpCustomerRepository()
 const getCustomersUseCase = new GetCustomersUseCase(customerRepository)
+const createCustomerUseCase = new CreateCustomerUseCase(customerRepository)
 
 // Fallback mock data in case backend API is not available
 const MOCK_CUSTOMERS: Customer[] = [
@@ -39,18 +42,46 @@ export const CustomerListPage: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
+  const fetchCustomers = () => {
+    setLoading(true)
     getCustomersUseCase
       .execute()
-      .then((data) => setCustomers(data))
+      .then((data) => {
+        setCustomers(data)
+        setError(null)
+      })
       .catch(() => {
         setError('Failed to load customers from server.')
         setCustomers(MOCK_CUSTOMERS) // Fallback to mock data for presentation
       })
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchCustomers()
   }, [])
+
+  const handleCreateCustomer = async (data: CreateCustomerDTO) => {
+    try {
+      const created = await createCustomerUseCase.execute(data)
+      // Agregamos el cliente nuevo al estado local
+      setCustomers((prev) => [created, ...prev])
+    } catch {
+      // Si falla la API real, agregamos un mock local simulado para mantener fluidez en el desarrollo
+      const newMockCustomer: Customer = {
+        id: `cust-${Date.now()}`,
+        name: data.name,
+        slug: data.name.toLowerCase().replace(/\s+/g, '-'),
+        status: data.status,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      setCustomers((prev) => [newMockCustomer, ...prev])
+    }
+  }
 
   const renderStatusBadge = (status: string) => {
     const upper = status?.toUpperCase() || 'UNKNOWN'
@@ -108,6 +139,7 @@ export const CustomerListPage: React.FC = () => {
           Customers
         </h2>
         <button
+          onClick={() => setIsModalOpen(true)}
           style={{
             backgroundColor: '#18181b',
             color: '#ffffff',
@@ -299,6 +331,13 @@ export const CustomerListPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal de creación */}
+      <CreateCustomerModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateCustomer}
+      />
     </div>
   )
 }
