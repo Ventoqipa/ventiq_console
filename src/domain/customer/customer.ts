@@ -1,9 +1,12 @@
+export type CustomerStatus = 'ACTIVE' | 'SUSPENDED' | 'PAUSED' | 'INACTIVE'
+
 export interface Customer {
   id: string
   name: string
+  slug?: string
   legalName?: string
   taxId?: string
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+  status: CustomerStatus
   createdAt: string
   updatedAt: string
 }
