@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Customer } from '../../../domain/customer/customer'
+import { Customer, CustomerStatus } from '../../../domain/customer/customer'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
+import { UpdateCustomerStatusUseCase } from '../../../application/useCases/customer/updateCustomerStatus.usecase'
+import { ConfirmStatusModal } from '../../components/customer/ConfirmStatusModal'
 
 const customerRepository = new HttpCustomerRepository()
+const updateCustomerStatusUseCase = new UpdateCustomerStatusUseCase(customerRepository)
 
-// Fallback mock dataset matching CustomerListPage ids
 const MOCK_CUSTOMERS: Record<string, Customer> = {
   'cust-001': {
     id: 'cust-001',
@@ -39,6 +41,10 @@ export const CustomerDetailPage: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
+  const [isUpdating, setIsUpdating] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
   useEffect(() => {
     if (!id) return
 
@@ -52,13 +58,31 @@ export const CustomerDetailPage: React.FC = () => {
         }
       })
       .catch(() => {
-        // Fallback to mock if API request fails
         if (MOCK_CUSTOMERS[id]) {
           setCustomer(MOCK_CUSTOMERS[id])
         }
       })
       .finally(() => setLoading(false))
   }, [id])
+
+  const currentStatus: CustomerStatus = customer?.status || 'ACTIVE'
+  const targetStatus: CustomerStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+
+  const handleStatusChange = async () => {
+    if (!id) return
+    setIsUpdating(true)
+    setErrorMessage(null)
+
+    try {
+      const updatedCustomer = await updateCustomerStatusUseCase.execute(id, targetStatus)
+      setCustomer(updatedCustomer)
+      setIsModalOpen(false)
+    } catch {
+      setErrorMessage('Failed to update customer status. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   const renderStatusBadge = (status?: string) => {
     const upper = status?.toUpperCase() || 'UNKNOWN'
@@ -71,9 +95,6 @@ export const CustomerDetailPage: React.FC = () => {
     } else if (upper === 'SUSPENDED') {
       bg = '#fef2f2'
       color = '#dc2626'
-    } else if (upper === 'PAUSED') {
-      bg = '#fffbebe'
-      color = '#d97706'
     }
 
     return (
@@ -104,8 +125,25 @@ export const CustomerDetailPage: React.FC = () => {
   const customerName = customer?.name || `Customer (${id})`
 
   return (
-    <div>
-      {/* Header with Back Button */}
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+      {/* Banner de error */}
+      {errorMessage && (
+        <div
+          style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            padding: '0.75rem 1rem',
+            borderRadius: '6px',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Encabezado con Botones alineados y margen adecuado */}
       <div
         style={{
           display: 'flex',
@@ -128,15 +166,32 @@ export const CustomerDetailPage: React.FC = () => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.4rem',
-            marginTop: '1.25rem',
             transition: 'background-color 0.15s ease',
           }}
         >
           ← Back to Customers
         </button>
+
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          style={{
+            backgroundColor: currentStatus === 'ACTIVE' ? '#dc2626' : '#16a34a',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '0.5rem 1rem',
+            fontSize: '0.825rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'opacity 0.15s ease',
+          }}
+        >
+          {currentStatus === 'ACTIVE' ? 'Suspend Customer' : 'Activate Customer'}
+        </button>
       </div>
 
-      {/* Main Detail Card */}
+      {/* Tarjeta principal */}
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -197,7 +252,7 @@ export const CustomerDetailPage: React.FC = () => {
           }}
         />
 
-        {/* Metadata Grid */}
+        {/* Malla de Metadatos */}
         <div
           style={{
             display: 'grid',
@@ -290,6 +345,16 @@ export const CustomerDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmación */}
+      <ConfirmStatusModal
+        isOpen={isModalOpen}
+        customerName={customerName}
+        targetStatus={targetStatus}
+        loading={isUpdating}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleStatusChange}
+      />
     </div>
   )
 }

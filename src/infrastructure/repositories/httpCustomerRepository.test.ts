@@ -77,4 +77,13 @@ describe('HttpCustomerRepository', () => {
 
     expect(result).toEqual(mockAdmin)
   })
+
+  it('should fallback to local mock data when updateStatus API request fails', async () => {
+    vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Network error'))
+
+    const result = await repository.updateStatus('cust-001', 'SUSPENDED')
+
+    expect(result.id).toBe('cust-001')
+    expect(result.status).toBe('SUSPENDED')
+  })
 })
