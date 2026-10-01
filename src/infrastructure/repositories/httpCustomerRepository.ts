@@ -3,7 +3,7 @@ import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/custom
 import { ClientAdmin } from '../../domain/customer/clientAdmin'
 import { ApiClient } from '../api/apiClient'
 
-// In-memory fallback cache to persist changes during mock development
+// In-memory fallback caches to persist changes during mock development
 const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
   'cust-001': {
     id: 'cust-001',
@@ -30,6 +30,8 @@ const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
     updatedAt: '2026-03-05T09:15:00Z',
   },
 }
+
+const MOCK_ADMINS_CACHE: Record<string, ClientAdmin[]> = {}
 
 // Helper function to convert "BlendIn Community" into "blendin-community"
 const generateSlug = (name: string): string => {
@@ -116,9 +118,28 @@ export class HttpCustomerRepository implements CustomerRepository {
     customerId: string,
     adminData: Omit<ClientAdmin, 'id' | 'createdAt'>,
   ): Promise<ClientAdmin> {
-    return ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
-      method: 'POST',
-      body: JSON.stringify(adminData),
-    })
+    try {
+      return await ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
+        method: 'POST',
+        body: JSON.stringify(adminData),
+      })
+    } catch {
+      const newAdmin: ClientAdmin = {
+        id: `admin-${Date.now().toString().slice(-4)}`,
+        ...adminData,
+        createdAt: new Date().toISOString(),
+      }
+
+      if (!MOCK_ADMINS_CACHE[customerId]) {
+        MOCK_ADMINS_CACHE[customerId] = []
+      }
+      MOCK_ADMINS_CACHE[customerId].push(newAdmin)
+
+      return newAdmin
+    }
+  }
+
+  async getAdminsByCustomerId(customerId: string): Promise<ClientAdmin[]> {
+    return MOCK_ADMINS_CACHE[customerId] || []
   }
 }
