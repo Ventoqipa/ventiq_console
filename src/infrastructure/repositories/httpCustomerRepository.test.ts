@@ -30,11 +30,10 @@ describe('HttpCustomerRepository', () => {
     expect(ApiClient.request).toHaveBeenCalledWith('/customers')
   })
 
-  it('should return null when getById fails', async () => {
+  it('should propagate error when getById fails', async () => {
     vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Not found'))
 
-    const result = await repository.getById('invalid-id')
-    expect(result).toBeNull()
+    await expect(repository.getById('invalid-id')).rejects.toThrow('Not found')
   })
 
   it('should update customer status', async () => {
@@ -78,12 +77,9 @@ describe('HttpCustomerRepository', () => {
     expect(result).toEqual(mockAdmin)
   })
 
-  it('should fallback to local mock data when updateStatus API request fails', async () => {
+  it('should propagate error when updateStatus API request fails', async () => {
     vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Network error'))
 
-    const result = await repository.updateStatus('cust-001', 'SUSPENDED')
-
-    expect(result.id).toBe('cust-001')
-    expect(result.status).toBe('SUSPENDED')
+    await expect(repository.updateStatus('cust-001', 'SUSPENDED')).rejects.toThrow('Network error')
   })
 })

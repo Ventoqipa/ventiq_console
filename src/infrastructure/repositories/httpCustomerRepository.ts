@@ -3,7 +3,8 @@ import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/custom
 import { ClientAdmin } from '../../domain/customer/clientAdmin'
 import { ApiClient } from '../api/apiClient'
 
-// In-memory fallback caches to persist changes during mock development
+const IS_MOCK_ENABLED = process.env.NODE_ENV === 'development'
+
 const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
   'cust-001': {
     id: 'cust-001',
@@ -33,7 +34,6 @@ const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
 
 const MOCK_ADMINS_CACHE: Record<string, ClientAdmin[]> = {}
 
-// Helper function to convert "BlendIn Community" into "blendin-community"
 const generateSlug = (name: string): string => {
   return name
     .toLowerCase()
@@ -43,11 +43,27 @@ const generateSlug = (name: string): string => {
     .replace(/^-+|-+$/g, '')
 }
 
+/**
+ * Generates a collision-resistant customer ID by verifying existing cache keys.
+ */
+const generateUniqueCustomerId = (): string => {
+  let customerNumber = Object.keys(MOCK_CUSTOMERS_CACHE).length
+  let customerId: string
+  do {
+    customerNumber += 1
+    customerId = `cust-${customerNumber.toString().padStart(3, '0')}`
+  } while (MOCK_CUSTOMERS_CACHE[customerId])
+  return customerId
+}
+
 export class HttpCustomerRepository implements CustomerRepository {
   async list(): Promise<Customer[]> {
     try {
       return await ApiClient.request<Customer[]>('/customers')
-    } catch {
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
       return Object.values(MOCK_CUSTOMERS_CACHE)
     }
   }
@@ -55,7 +71,10 @@ export class HttpCustomerRepository implements CustomerRepository {
   async getById(id: string): Promise<Customer | null> {
     try {
       return await ApiClient.request<Customer>(`/customers/${id}`)
-    } catch {
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
       return MOCK_CUSTOMERS_CACHE[id] || null
     }
   }
@@ -66,15 +85,18 @@ export class HttpCustomerRepository implements CustomerRepository {
         method: 'POST',
         body: JSON.stringify(data),
       })
-    } catch {
-      // Auto-generate slug from name if empty or missing
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
       const computedSlug =
         data.slug && data.slug.trim() !== ''
           ? data.slug
           : generateSlug(data.name)
 
       const newCustomer: Customer = {
-        id: `cust-${Date.now().toString().slice(-3)}`,
+        id: generateUniqueCustomerId(),
         name: data.name,
         slug: computedSlug,
         status: data.status || 'ACTIVE',
@@ -93,14 +115,14 @@ export class HttpCustomerRepository implements CustomerRepository {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       })
-    } catch {
-      const existing = MOCK_CUSTOMERS_CACHE[id] || {
-        id,
-        name: `Customer (${id})`,
-        slug: id,
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
+      const existing = MOCK_CUSTOMERS_CACHE[id]
+      if (!existing) {
+        throw new Error(`Customer with ID "${id}" was not found in the mock cache.`)
       }
 
       const updatedCustomer: Customer = {
@@ -119,13 +141,25 @@ export class HttpCustomerRepository implements CustomerRepository {
     adminData: Omit<ClientAdmin, 'id' | 'createdAt'>,
   ): Promise<ClientAdmin> {
     try {
-      return await ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
+      const newAdmin = await ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
         method: 'POST',
         body: JSON.stringify(adminData),
       })
-    } catch {
+
+      // Cache successful response so getAdminsByCustomerId retrieves it
+      if (!MOCK_ADMINS_CACHE[customerId]) {
+        MOCK_ADMINS_CACHE[customerId] = []
+      }
+      MOCK_ADMINS_CACHE[customerId].push(newAdmin)
+
+      return newAdmin
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
       const newAdmin: ClientAdmin = {
-        id: `admin-${Date.now().toString().slice(-4)}`,
+        id: `admin-${Date.now()}`,
         ...adminData,
         createdAt: new Date().toISOString(),
       }

@@ -11,7 +11,8 @@ export class AssignClientAdminUseCase {
       throw new Error('Customer ID is required')
     }
 
-    if (!adminData.email || !adminData.email.includes('@')) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!adminData.email || !emailRegex.test(adminData.email)) {
       throw new Error('Valid email address is required')
     }
 

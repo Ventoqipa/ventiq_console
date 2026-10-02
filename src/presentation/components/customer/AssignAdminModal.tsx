@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface AssignAdminModalProps {
   isOpen: boolean
@@ -20,6 +20,63 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
   const [role, setRole] = useState<'ADMIN' | 'OWNER'>('ADMIN')
   const [error, setError] = useState<string | null>(null)
 
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    // Save previously focused element to restore it on close
+    previousFocusRef.current = document.activeElement as HTMLElement
+
+    // Focus first interactive element in modal
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusableElements && focusableElements.length > 0) {
+      focusableElements[0].focus()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !loading) {
+        onClose()
+        return
+      }
+
+      // Keep focus trapped within modal overlay
+      if (event.key === 'Tab' && modalRef.current) {
+        const focusables = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+        )
+        if (focusables.length === 0) return
+
+        const firstElement = focusables[0]
+        const lastElement = focusables[focusables.length - 1]
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstElement) {
+            event.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            event.preventDefault()
+            firstElement.focus()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [isOpen, loading, onClose])
+
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,7 +85,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
       setError('Name is required')
       return
     }
-    if (!email.trim() || !email.includes('@')) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim() || !emailRegex.test(email)) {
       setError('A valid email address is required')
       return
     }
@@ -39,6 +97,9 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assign-admin-modal-title"
       style={{
         position: 'fixed',
         top: 0,
@@ -53,6 +114,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
       }}
     >
       <div
+        ref={modalRef}
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '8px',
@@ -62,7 +124,10 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <h3 style={{ margin: '0 0 0.5rem 0', color: '#18181b', fontSize: '1.25rem' }}>
+        <h3
+          id="assign-admin-modal-title"
+          style={{ margin: '0 0 0.5rem 0', color: '#18181b', fontSize: '1.25rem' }}
+        >
           Assign Client Admin
         </h3>
         <p style={{ margin: '0 0 1rem 0', color: '#71717a', fontSize: '0.875rem' }}>
@@ -88,6 +153,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label
+              htmlFor="client-admin-name"
               style={{
                 display: 'block',
                 fontSize: '0.75rem',
@@ -100,6 +166,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
               Full Name
             </label>
             <input
+              id="client-admin-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -117,6 +184,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
           <div style={{ marginBottom: '1rem' }}>
             <label
+              htmlFor="client-admin-email"
               style={{
                 display: 'block',
                 fontSize: '0.75rem',
@@ -129,6 +197,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
               Email Address
             </label>
             <input
+              id="client-admin-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -146,6 +215,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label
+              htmlFor="client-admin-role"
               style={{
                 display: 'block',
                 fontSize: '0.75rem',
@@ -158,6 +228,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
               Role
             </label>
             <select
+              id="client-admin-role"
               value={role}
               onChange={(e) => setRole(e.target.value as 'ADMIN' | 'OWNER')}
               style={{
