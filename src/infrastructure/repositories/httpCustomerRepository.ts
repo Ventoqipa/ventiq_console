@@ -3,6 +3,9 @@ import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/custom
 import { ClientAdmin } from '../../domain/customer/clientAdmin'
 import { ApiClient } from '../api/apiClient'
 
+// Flag to explicitly enable mock fallback logic during local development
+const IS_MOCK_ENABLED = process.env.NODE_ENV === 'development'
+
 // In-memory fallback cache to persist changes during mock development
 const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
   'cust-001': {
@@ -41,11 +44,27 @@ const generateSlug = (name: string): string => {
     .replace(/^-+|-+$/g, '')
 }
 
+/**
+ * Generates a collision-resistant customer ID by verifying existing cache keys.
+ */
+const generateUniqueCustomerId = (): string => {
+  let id = `cust-${Date.now()}`
+  let counter = 1
+  while (MOCK_CUSTOMERS_CACHE[id]) {
+    id = `cust-${Date.now()}-${counter}`
+    counter++
+  }
+  return id
+}
+
 export class HttpCustomerRepository implements CustomerRepository {
   async list(): Promise<Customer[]> {
     try {
       return await ApiClient.request<Customer[]>('/customers')
-    } catch {
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
       return Object.values(MOCK_CUSTOMERS_CACHE)
     }
   }
@@ -53,7 +72,10 @@ export class HttpCustomerRepository implements CustomerRepository {
   async getById(id: string): Promise<Customer | null> {
     try {
       return await ApiClient.request<Customer>(`/customers/${id}`)
-    } catch {
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
       return MOCK_CUSTOMERS_CACHE[id] || null
     }
   }
@@ -64,15 +86,18 @@ export class HttpCustomerRepository implements CustomerRepository {
         method: 'POST',
         body: JSON.stringify(data),
       })
-    } catch {
-      // Auto-generate slug from name if empty or missing
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
       const computedSlug =
         data.slug && data.slug.trim() !== ''
           ? data.slug
           : generateSlug(data.name)
 
       const newCustomer: Customer = {
-        id: `cust-${Date.now().toString().slice(-3)}`,
+        id: generateUniqueCustomerId(),
         name: data.name,
         slug: computedSlug,
         status: data.status || 'ACTIVE',
@@ -91,14 +116,16 @@ export class HttpCustomerRepository implements CustomerRepository {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       })
-    } catch {
-      const existing = MOCK_CUSTOMERS_CACHE[id] || {
-        id,
-        name: `Customer (${id})`,
-        slug: id,
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    } catch (error) {
+      // Propagate API errors unless mock fallback is explicitly permitted
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
+      // Reject cache misses instead of creating phantom records
+      const existing = MOCK_CUSTOMERS_CACHE[id]
+      if (!existing) {
+        throw new Error(`Customer with ID "${id}" was not found in the mock cache.`)
       }
 
       const updatedCustomer: Customer = {

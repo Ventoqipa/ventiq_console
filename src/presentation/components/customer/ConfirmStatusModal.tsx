@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { CustomerStatus } from '../../../domain/customer/customer'
 
 interface ConfirmStatusModalProps {
@@ -18,6 +18,65 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    // Save previous active element to restore focus when modal closes
+    previousFocusRef.current = document.activeElement as HTMLElement
+
+    // Focus the first available interactive element in the modal
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusableElements && focusableElements.length > 0) {
+      focusableElements[0].focus()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Close modal on Escape key press
+      if (event.key === 'Escape' && !loading) {
+        onClose()
+        return
+      }
+
+      // Trap Tab and Shift+Tab focus navigation inside the modal
+      if (event.key === 'Tab' && modalRef.current) {
+        const focusables = modalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+        )
+        if (focusables.length === 0) return
+
+        const firstElement = focusables[0]
+        const lastElement = focusables[focusables.length - 1]
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstElement) {
+            event.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            event.preventDefault()
+            firstElement.focus()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      // Restore focus to previous element when modal unmounts/closes
+      if (previousFocusRef.current) {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [isOpen, loading, onClose])
+
   if (!isOpen) return null
 
   const isSuspending = targetStatus === 'SUSPENDED'
@@ -25,6 +84,10 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-status-modal-title"
+      aria-describedby="confirm-status-modal-description"
       style={{
         position: 'fixed',
         top: 0,
@@ -39,6 +102,7 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
       }}
     >
       <div
+        ref={modalRef}
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '8px',
@@ -50,6 +114,7 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
         }}
       >
         <h3
+          id="confirm-status-modal-title"
           style={{
             fontSize: '1.125rem',
             fontWeight: 600,
@@ -61,6 +126,7 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
           {actionText} Customer Access
         </h3>
         <p
+          id="confirm-status-modal-description"
           style={{
             fontSize: '0.875rem',
             color: '#52525b',

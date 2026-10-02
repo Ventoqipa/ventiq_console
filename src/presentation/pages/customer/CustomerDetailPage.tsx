@@ -87,18 +87,19 @@ export const CustomerDetailPage: React.FC = () => {
   const renderStatusBadge = (status?: string) => {
     const upper = status?.toUpperCase() || 'UNKNOWN'
     let bg = '#f4f4f5'
-    let color = '#71717a'
+    let color = '#52525b' // High contrast neutral
 
     if (upper === 'ACTIVE') {
-      bg = '#ecfdf5'
-      color = '#059669'
+      bg = '#dcfce7'
+      color = '#14532d' // Enhanced contrast green (WCAG AAA/AA compliant)
     } else if (upper === 'SUSPENDED') {
-      bg = '#fef2f2'
-      color = '#dc2626'
+      bg = '#fee2e2'
+      color = '#991b1b' // Enhanced contrast red (WCAG AAA/AA compliant)
     }
 
     return (
       <span
+        aria-label={`Status: ${upper}`}
         style={{
           display: 'inline-block',
           padding: '0.25rem 0.65rem',
@@ -116,7 +117,7 @@ export const CustomerDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center', color: '#71717a' }}>
+      <div role="status" style={{ padding: '2rem', textAlign: 'center', color: '#52525b' }}>
         Loading customer details...
       </div>
     )
@@ -129,10 +130,11 @@ export const CustomerDetailPage: React.FC = () => {
       {/* Banner de error */}
       {errorMessage && (
         <div
+          role="alert"
           style={{
             backgroundColor: '#fef2f2',
             border: '1px solid #fecaca',
-            color: '#dc2626',
+            color: '#991b1b',
             padding: '0.75rem 1rem',
             borderRadius: '6px',
             marginBottom: '1rem',
@@ -143,7 +145,7 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Encabezado con Botones alineados y margen adecuado */}
+      {/* Encabezado con Botones */}
       <div
         style={{
           display: 'flex',
@@ -153,6 +155,7 @@ export const CustomerDetailPage: React.FC = () => {
         }}
       >
         <button
+          type="button"
           onClick={() => navigate('/customers')}
           style={{
             backgroundColor: '#18181b',
@@ -176,7 +179,7 @@ export const CustomerDetailPage: React.FC = () => {
           type="button"
           onClick={() => setIsModalOpen(true)}
           style={{
-            backgroundColor: currentStatus === 'ACTIVE' ? '#dc2626' : '#16a34a',
+            backgroundColor: currentStatus === 'ACTIVE' ? '#b91c1c' : '#15803d', // Adjusted for >= 4.5:1 contrast
             color: '#ffffff',
             border: 'none',
             borderRadius: '6px',
@@ -214,7 +217,7 @@ export const CustomerDetailPage: React.FC = () => {
               style={{
                 fontSize: '0.7rem',
                 fontWeight: 600,
-                color: '#71717a',
+                color: '#52525b', // High-contrast label
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
@@ -233,7 +236,7 @@ export const CustomerDetailPage: React.FC = () => {
             </h2>
             <p
               style={{
-                color: '#71717a',
+                color: '#52525b',
                 fontSize: '0.85rem',
                 margin: 0,
               }}
@@ -266,7 +269,7 @@ export const CustomerDetailPage: React.FC = () => {
                 display: 'block',
                 fontSize: '0.725rem',
                 fontWeight: 600,
-                color: '#a1a1aa',
+                color: '#52525b',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: '0.25rem',
@@ -294,7 +297,7 @@ export const CustomerDetailPage: React.FC = () => {
                 display: 'block',
                 fontSize: '0.725rem',
                 fontWeight: 600,
-                color: '#a1a1aa',
+                color: '#52525b',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: '0.25rem',
@@ -305,7 +308,7 @@ export const CustomerDetailPage: React.FC = () => {
             <span
               style={{
                 fontSize: '0.875rem',
-                color: '#3f3f46',
+                color: '#18181b',
                 fontWeight: 500,
               }}
             >
@@ -319,7 +322,7 @@ export const CustomerDetailPage: React.FC = () => {
                 display: 'block',
                 fontSize: '0.725rem',
                 fontWeight: 600,
-                color: '#a1a1aa',
+                color: '#52525b',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
                 marginBottom: '0.25rem',
@@ -330,7 +333,7 @@ export const CustomerDetailPage: React.FC = () => {
             <span
               style={{
                 fontSize: '0.875rem',
-                color: '#3f3f46',
+                color: '#18181b',
                 fontWeight: 500,
               }}
             >
