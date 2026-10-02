@@ -30,11 +30,10 @@ describe('HttpCustomerRepository', () => {
     expect(ApiClient.request).toHaveBeenCalledWith('/customers')
   })
 
-  it('should return null when getById fails', async () => {
+  it('should propagate error when getById fails', async () => {
     vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Not found'))
 
-    const result = await repository.getById('invalid-id')
-    expect(result).toBeNull()
+    await expect(repository.getById('invalid-id')).rejects.toThrow('Not found')
   })
 
   it('should update customer status', async () => {
@@ -61,7 +60,7 @@ describe('HttpCustomerRepository', () => {
       id: 'admin-1',
       customerId: 'cust-1',
       email: 'admin@acme.com',
-      fullName: 'John Doe',
+      name: 'John Doe',
       role: 'ADMIN',
       createdAt: '2026-01-01',
     }
@@ -71,10 +70,16 @@ describe('HttpCustomerRepository', () => {
     const result = await repository.assignAdmin('cust-1', {
       customerId: 'cust-1',
       email: 'admin@acme.com',
-      fullName: 'John Doe',
+      name: 'John Doe',
       role: 'ADMIN',
     })
 
     expect(result).toEqual(mockAdmin)
+  })
+
+  it('should propagate error when updateStatus API request fails', async () => {
+    vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Network error'))
+
+    await expect(repository.updateStatus('cust-001', 'SUSPENDED')).rejects.toThrow('Network error')
   })
 })
