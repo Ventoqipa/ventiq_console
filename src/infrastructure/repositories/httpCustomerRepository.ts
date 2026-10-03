@@ -5,26 +5,22 @@ import { ApiClient } from '../api/apiClient'
 
 export class HttpCustomerRepository implements CustomerRepository {
   async list(): Promise<Customer[]> {
-    return ApiClient.request<Customer[]>('/customers')
+    return await ApiClient.request<Customer[]>('/customers')
   }
 
   async getById(id: string): Promise<Customer | null> {
-    try {
-      return await ApiClient.request<Customer>(`/customers/${id}`)
-    } catch {
-      return null
-    }
+    return await ApiClient.request<Customer>(`/customers/${id}`)
   }
 
   async create(data: CreateCustomerDTO): Promise<Customer> {
-    return ApiClient.request<Customer>('/customers', {
+    return await ApiClient.request<Customer>('/customers', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
   async updateStatus(id: string, status: CustomerStatus): Promise<Customer> {
-    return ApiClient.request<Customer>(`/customers/${id}/status`, {
+    return await ApiClient.request<Customer>(`/customers/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     })
@@ -34,9 +30,13 @@ export class HttpCustomerRepository implements CustomerRepository {
     customerId: string,
     adminData: Omit<ClientAdmin, 'id' | 'createdAt'>,
   ): Promise<ClientAdmin> {
-    return ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
+    return await ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
       method: 'POST',
       body: JSON.stringify(adminData),
     })
+  }
+
+  async getAdminsByCustomerId(customerId: string): Promise<ClientAdmin[]> {
+    return await ApiClient.request<ClientAdmin[]>(`/customers/${customerId}/admins`)
   }
 }
