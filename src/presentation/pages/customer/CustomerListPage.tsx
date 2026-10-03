@@ -44,7 +44,7 @@ export const CustomerListPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
-  // Estados de Filtro (Tarjeta 8)
+  // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | 'ALL'>('ALL')
 
@@ -69,7 +69,7 @@ export const CustomerListPage: React.FC = () => {
     fetchCustomers()
   }, [])
 
-  // Filtrado reactivo en la UI
+  // Reactive UI Filtering
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
       const searchLower = searchTerm.toLowerCase().trim()
@@ -89,7 +89,7 @@ export const CustomerListPage: React.FC = () => {
     setStatusFilter('ALL')
   }
 
-  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'ALL'
+  const hasActiveFilters = searchTerm.trim() !== '' || statusFilter !== 'ALL'
 
   const handleCreateCustomer = async (data: CreateCustomerDTO) => {
     try {
@@ -180,7 +180,7 @@ export const CustomerListPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Control Bar: Búsqueda y Filtros */}
+      {/* Control Bar: Search and Filters */}
       <div
         style={{
           display: 'flex',
@@ -193,6 +193,7 @@ export const CustomerListPage: React.FC = () => {
         <input
           type="text"
           role="searchbox"
+          aria-label="Search customers by company name or slug"
           placeholder="Search by company name or slug..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -208,6 +209,7 @@ export const CustomerListPage: React.FC = () => {
 
         <select
           role="combobox"
+          aria-label="Filter customers by status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as CustomerStatus | 'ALL')}
           style={{
@@ -445,7 +447,7 @@ export const CustomerListPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Modal de creación */}
+      {/* Creation Modal */}
       <CreateCustomerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

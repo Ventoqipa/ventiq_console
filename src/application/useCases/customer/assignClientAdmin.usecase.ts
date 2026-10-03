@@ -16,8 +16,8 @@ export class AssignClientAdminUseCase {
       throw new Error('Valid email address is required')
     }
 
-    if (!adminData.name || adminData.name.trim() === '') {
-      throw new Error('Admin name is required')
+    if (!adminData.fullName || adminData.fullName.trim() === '') {
+      throw new Error('Admin full name is required')
     }
 
     return await this.customerRepository.assignAdmin(customerId, {

@@ -84,10 +84,6 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-status-modal-title"
-      aria-describedby="confirm-status-modal-description"
       style={{
         position: 'fixed',
         top: 0,
@@ -103,6 +99,10 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
     >
       <div
         ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-status-modal-title"
+        aria-describedby="confirm-status-modal-description"
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '8px',

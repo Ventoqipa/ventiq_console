@@ -1,9 +1,8 @@
 import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved, cleanup } from '@testing-library/react'
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { CustomerListPage } from './CustomerListPage'
 
-// Mock de useNavigate
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
@@ -12,18 +11,50 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+const { mockList } = vi.hoisted(() => ({
+  mockList: vi.fn(),
+}))
+
+vi.mock('../../../infrastructure/repositories/httpCustomerRepository', () => {
+  return {
+    HttpCustomerRepository: vi.fn().mockImplementation(() => ({
+      list: mockList,
+    })),
+  }
+})
+
+const mockCustomersList = [
+  {
+    id: 'cust-001',
+    name: 'Acme Corporation',
+    slug: 'acme-corp',
+    status: 'ACTIVE' as const,
+    createdAt: '2026-01-15T10:00:00Z',
+    updatedAt: '2026-01-15T10:00:00Z',
+  },
+  {
+    id: 'cust-002',
+    name: 'Stark Industries',
+    slug: 'stark-ind',
+    status: 'SUSPENDED' as const,
+    createdAt: '2026-02-20T14:30:00Z',
+    updatedAt: '2026-02-20T14:30:00Z',
+  },
+]
+
 describe('CustomerListPage Filtering & Search', () => {
-  // Limpiar el DOM después de cada test para evitar componentes duplicados
-  afterEach(() => {
-    cleanup()
+  beforeEach(() => {
+    mockList.mockResolvedValue(mockCustomersList)
   })
 
-  const getSearchInput = () =>
-    screen.getByPlaceholderText(/search by company name or slug/i)
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
 
+  const getSearchInput = () => screen.getByPlaceholderText(/search by company name or slug/i)
   const getStatusDropdown = () => screen.getByRole('combobox')
 
-  // Función auxiliar para esperar a que termine el estado de carga inicial
   const waitForLoadingToFinish = async () => {
     const loadingElement = screen.queryByText(/loading customers\.\.\./i)
     if (loadingElement) {
@@ -55,24 +86,16 @@ describe('CustomerListPage Filtering & Search', () => {
 
     const searchInput = getSearchInput()
 
-    // 1. Filtrar por nombre
     fireEvent.change(searchInput, { target: { value: 'Acme' } })
 
-    const acmeElement = await screen.findByText('Acme Corporation')
-    expect(acmeElement).toBeInTheDocument()
-
-    // Esperar a que Stark Industries desaparezca del DOM
+    expect(await screen.findByText('Acme Corporation')).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByText('Stark Industries')).not.toBeInTheDocument()
     })
 
-    // 2. Filtrar por slug
     fireEvent.change(searchInput, { target: { value: 'stark-ind' } })
 
-    const starkElement = await screen.findByText('Stark Industries')
-    expect(starkElement).toBeInTheDocument()
-
-    // Esperar a que Acme Corporation desaparezca del DOM
+    expect(await screen.findByText('Stark Industries')).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByText('Acme Corporation')).not.toBeInTheDocument()
     })
@@ -89,12 +112,38 @@ describe('CustomerListPage Filtering & Search', () => {
 
     const statusDropdown = getStatusDropdown()
 
-    // Seleccionar opción SUSPENDED
     fireEvent.change(statusDropdown, { target: { value: 'SUSPENDED' } })
 
     await waitFor(() => {
       expect(screen.getByText('Stark Industries')).toBeInTheDocument()
       expect(screen.queryByText('Acme Corporation')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows empty state when no customers match filter and resets filters when clicking reset button', async () => {
+    render(
+      <MemoryRouter>
+        <CustomerListPage />
+      </MemoryRouter>
+    )
+
+    await waitForLoadingToFinish()
+
+    const searchInput = getSearchInput()
+
+    fireEvent.change(searchInput, { target: { value: 'NonExistingCompany123' } })
+
+    await waitFor(() => {
+      expect(screen.getByText(/no customers found/i)).toBeInTheDocument()
+    })
+
+    // Target the specific reset button unambiguously
+    const resetButton = screen.getByRole('button', { name: /^reset filters$/i })
+    fireEvent.click(resetButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Acme Corporation')).toBeInTheDocument()
+      expect(screen.getByText('Stark Industries')).toBeInTheDocument()
     })
   })
 })
