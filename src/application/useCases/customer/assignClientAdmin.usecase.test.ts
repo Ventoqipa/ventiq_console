@@ -11,7 +11,7 @@ describe('AssignClientAdminUseCase', () => {
       assignAdmin: vi.fn().mockResolvedValue({
         id: 'admin-123',
         customerId: 'cust-001',
-        name: 'John Doe',
+        fullName: 'John Doe',
         email: 'john.doe@acme.com',
         role: 'ADMIN',
         createdAt: '2026-10-01T12:00:00Z',
@@ -22,7 +22,7 @@ describe('AssignClientAdminUseCase', () => {
 
   it('should assign admin successfully with valid data', async () => {
     const adminData = {
-      name: 'John Doe',
+      fullName: 'John Doe',
       email: 'john.doe@acme.com',
       role: 'ADMIN' as const,
     }
@@ -38,7 +38,7 @@ describe('AssignClientAdminUseCase', () => {
 
   it('should throw an error if customer ID is empty', async () => {
     const adminData = {
-      name: 'John Doe',
+      fullName: 'John Doe',
       email: 'john.doe@acme.com',
       role: 'ADMIN' as const,
     }
@@ -48,7 +48,7 @@ describe('AssignClientAdminUseCase', () => {
 
   it('should throw an error if email is invalid', async () => {
     const adminData = {
-      name: 'John Doe',
+      fullName: 'John Doe',
       email: 'invalid-email',
       role: 'ADMIN' as const,
     }
@@ -56,13 +56,13 @@ describe('AssignClientAdminUseCase', () => {
     await expect(useCase.execute('cust-001', adminData)).rejects.toThrow('Valid email address is required')
   })
 
-  it('should throw an error if name is missing', async () => {
+  it('should throw an error if full name is missing', async () => {
     const adminData = {
-      name: '',
+      fullName: '',
       email: 'john.doe@acme.com',
       role: 'ADMIN' as const,
     }
 
-    await expect(useCase.execute('cust-001', adminData)).rejects.toThrow('Admin name is required')
+    await expect(useCase.execute('cust-001', adminData)).rejects.toThrow('Admin full name is required')
   })
 })

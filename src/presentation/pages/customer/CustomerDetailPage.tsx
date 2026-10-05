@@ -12,33 +12,6 @@ const customerRepository = new HttpCustomerRepository()
 const updateCustomerStatusUseCase = new UpdateCustomerStatusUseCase(customerRepository)
 const assignClientAdminUseCase = new AssignClientAdminUseCase(customerRepository)
 
-const MOCK_CUSTOMERS: Record<string, Customer> = {
-  'cust-001': {
-    id: 'cust-001',
-    name: 'Acme Corporation',
-    slug: 'acme-corp',
-    status: 'ACTIVE',
-    createdAt: '2026-01-15T10:00:00Z',
-    updatedAt: '2026-01-15T10:00:00Z',
-  },
-  'cust-002': {
-    id: 'cust-002',
-    name: 'Stark Industries',
-    slug: 'stark-ind',
-    status: 'SUSPENDED',
-    createdAt: '2026-02-20T14:30:00Z',
-    updatedAt: '2026-02-20T14:30:00Z',
-  },
-  'cust-003': {
-    id: 'cust-003',
-    name: 'Wayne Enterprises',
-    slug: 'wayne-ent',
-    status: 'ACTIVE',
-    createdAt: '2026-03-05T09:15:00Z',
-    updatedAt: '2026-03-05T09:15:00Z',
-  },
-}
-
 export const CustomerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -63,20 +36,19 @@ export const CustomerDetailPage: React.FC = () => {
       try {
         setLoading(true)
         const data = await customerRepository.getById(id)
-        if (data) {
-          setCustomer(data)
-        } else if (MOCK_CUSTOMERS[id]) {
-          setCustomer(MOCK_CUSTOMERS[id])
-        }
+        setCustomer(data)
 
-        const admins = await customerRepository.getAdminsByCustomerId(id)
-        // Explicitly clear or set state to prevent stale admin data when changing routes/customers
-        setAdmin(admins[0] ?? null)
-      } catch {
-        if (MOCK_CUSTOMERS[id]) {
-          setCustomer(MOCK_CUSTOMERS[id])
+        if (data) {
+          const admins = await customerRepository.getAdminsByCustomerId(id)
+          setAdmin(admins[0] ?? null)
+        } else {
+          setAdmin(null)
         }
+      } catch {
+        // Clear customer and admin state on route lookup failure
+        setCustomer(null)
         setAdmin(null)
+        setErrorMessage('Failed to load customer details.')
       } finally {
         setLoading(false)
       }
@@ -104,7 +76,7 @@ export const CustomerDetailPage: React.FC = () => {
     }
   }
 
-  const handleAssignAdmin = async (adminData: { name: string; email: string; role: 'ADMIN' | 'OWNER' }) => {
+  const handleAssignAdmin = async (adminData: { fullName: string; email: string; role: 'ADMIN' | 'OWNER' }) => {
     if (!id) return
     setIsAssigningAdmin(true)
     setErrorMessage(null)
@@ -123,14 +95,14 @@ export const CustomerDetailPage: React.FC = () => {
   const renderStatusBadge = (status?: string) => {
     const upper = status?.toUpperCase() || 'UNKNOWN'
     let bg = '#f4f4f5'
-    let color = '#52525b' // High contrast neutral
+    let color = '#52525b'
 
     if (upper === 'ACTIVE') {
       bg = '#dcfce7'
-      color = '#14532d' // Enhanced contrast green (WCAG AAA/AA compliant)
+      color = '#14532d'
     } else if (upper === 'SUSPENDED') {
       bg = '#fee2e2'
-      color = '#991b1b' // Enhanced contrast red (WCAG AAA/AA compliant)
+      color = '#991b1b'
     }
 
     return (
@@ -215,7 +187,7 @@ export const CustomerDetailPage: React.FC = () => {
           type="button"
           onClick={() => setIsStatusModalOpen(true)}
           style={{
-            backgroundColor: currentStatus === 'ACTIVE' ? '#b91c1c' : '#15803d', // Adjusted for >= 4.5:1 contrast
+            backgroundColor: currentStatus === 'ACTIVE' ? '#b91c1c' : '#15803d',
             color: '#ffffff',
             border: 'none',
             borderRadius: '6px',
@@ -254,7 +226,7 @@ export const CustomerDetailPage: React.FC = () => {
               style={{
                 fontSize: '0.7rem',
                 fontWeight: 600,
-                color: '#52525b', // High-contrast label
+                color: '#52525b',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
@@ -478,7 +450,9 @@ export const CustomerDetailPage: React.FC = () => {
               >
                 NAME
               </span>
-              <strong style={{ fontSize: '0.875rem', color: '#18181b' }}>{admin.name}</strong>
+              <strong style={{ fontSize: '0.875rem', color: '#18181b' }}>
+                {admin.fullName}
+              </strong>
             </div>
 
             <div>

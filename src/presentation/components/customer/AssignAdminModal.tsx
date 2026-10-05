@@ -5,7 +5,7 @@ interface AssignAdminModalProps {
   customerName: string
   loading: boolean
   onClose: () => void
-  onConfirm: (adminData: { name: string; email: string; role: 'ADMIN' | 'OWNER' }) => void
+  onConfirm: (adminData: { fullName: string; email: string; role: 'ADMIN' | 'OWNER' }) => void
 }
 
 export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
@@ -15,7 +15,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [name, setName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'ADMIN' | 'OWNER'>('ADMIN')
   const [error, setError] = useState<string | null>(null)
@@ -81,8 +81,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) {
-      setError('Name is required')
+    if (!fullName.trim()) {
+      setError('Full name is required')
       return
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -92,7 +92,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
     }
 
     setError(null)
-    onConfirm({ name, email, role })
+    onConfirm({ fullName, email, role })
   }
 
   return (
@@ -168,8 +168,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             <input
               id="client-admin-name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Sarah Connor"
               style={{
                 width: '100%',
