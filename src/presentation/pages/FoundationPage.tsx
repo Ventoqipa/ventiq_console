@@ -78,7 +78,7 @@ export const FoundationPage: React.FC = () => {
               EST. REVENUE
             </span>
             <span style={{ fontSize: '0.65rem', backgroundColor: '#f4f4f5', color: '#71717a', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
-              Fuente: AdMob
+              Source: AdMob
             </span>
           </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#18181b', marginTop: '0.3rem' }}>
@@ -95,7 +95,7 @@ export const FoundationPage: React.FC = () => {
             Requests vs. Impressions — Last 7 days
           </h3>
           <div style={{ height: '200px', backgroundColor: '#fafafa', border: '1px dashed #e4e4e7', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a1a1aa', fontSize: '0.875rem' }}>
-            [ Gráfico de Tendencia de Telemetría ]
+            [ Trending Telemetry Graph ]
           </div>
         </div>
 
