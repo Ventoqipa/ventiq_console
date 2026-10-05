@@ -2,7 +2,7 @@ export interface ClientAdmin {
   id: string
   customerId: string
   email: string
-  fullName: string
+  name: string
   role: 'ADMIN' | 'OWNER'
   createdAt: string
 }

@@ -3,10 +3,8 @@ import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/custom
 import { ClientAdmin } from '../../domain/customer/clientAdmin'
 import { ApiClient } from '../api/apiClient'
 
-// Flag to explicitly enable mock fallback logic during local development
 const IS_MOCK_ENABLED = process.env.NODE_ENV === 'development'
 
-// In-memory fallback cache to persist changes during mock development
 const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
   'cust-001': {
     id: 'cust-001',
@@ -34,7 +32,8 @@ const MOCK_CUSTOMERS_CACHE: Record<string, Customer> = {
   },
 }
 
-// Helper function to convert "BlendIn Community" into "blendin-community"
+const MOCK_ADMINS_CACHE: Record<string, ClientAdmin[]> = {}
+
 const generateSlug = (name: string): string => {
   return name
     .toLowerCase()
@@ -48,13 +47,13 @@ const generateSlug = (name: string): string => {
  * Generates a collision-resistant customer ID by verifying existing cache keys.
  */
 const generateUniqueCustomerId = (): string => {
-  let id = `cust-${Date.now()}`
-  let counter = 1
-  while (MOCK_CUSTOMERS_CACHE[id]) {
-    id = `cust-${Date.now()}-${counter}`
-    counter++
-  }
-  return id
+  let customerNumber = Object.keys(MOCK_CUSTOMERS_CACHE).length
+  let customerId: string
+  do {
+    customerNumber += 1
+    customerId = `cust-${customerNumber.toString().padStart(3, '0')}`
+  } while (MOCK_CUSTOMERS_CACHE[customerId])
+  return customerId
 }
 
 export class HttpCustomerRepository implements CustomerRepository {
@@ -117,12 +116,10 @@ export class HttpCustomerRepository implements CustomerRepository {
         body: JSON.stringify({ status }),
       })
     } catch (error) {
-      // Propagate API errors unless mock fallback is explicitly permitted
       if (!IS_MOCK_ENABLED) {
         throw error
       }
 
-      // Reject cache misses instead of creating phantom records
       const existing = MOCK_CUSTOMERS_CACHE[id]
       if (!existing) {
         throw new Error(`Customer with ID "${id}" was not found in the mock cache.`)
@@ -143,9 +140,40 @@ export class HttpCustomerRepository implements CustomerRepository {
     customerId: string,
     adminData: Omit<ClientAdmin, 'id' | 'createdAt'>,
   ): Promise<ClientAdmin> {
-    return ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
-      method: 'POST',
-      body: JSON.stringify(adminData),
-    })
+    try {
+      const newAdmin = await ApiClient.request<ClientAdmin>(`/customers/${customerId}/admins`, {
+        method: 'POST',
+        body: JSON.stringify(adminData),
+      })
+
+      // Cache successful response so getAdminsByCustomerId retrieves it
+      if (!MOCK_ADMINS_CACHE[customerId]) {
+        MOCK_ADMINS_CACHE[customerId] = []
+      }
+      MOCK_ADMINS_CACHE[customerId].push(newAdmin)
+
+      return newAdmin
+    } catch (error) {
+      if (!IS_MOCK_ENABLED) {
+        throw error
+      }
+
+      const newAdmin: ClientAdmin = {
+        id: `admin-${Date.now()}`,
+        ...adminData,
+        createdAt: new Date().toISOString(),
+      }
+
+      if (!MOCK_ADMINS_CACHE[customerId]) {
+        MOCK_ADMINS_CACHE[customerId] = []
+      }
+      MOCK_ADMINS_CACHE[customerId].push(newAdmin)
+
+      return newAdmin
+    }
+  }
+
+  async getAdminsByCustomerId(customerId: string): Promise<ClientAdmin[]> {
+    return MOCK_ADMINS_CACHE[customerId] || []
   }
 }

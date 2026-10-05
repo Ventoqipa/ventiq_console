@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Customer, CustomerStatus } from '../../../domain/customer/customer'
+import { ClientAdmin } from '../../../domain/customer/clientAdmin'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
 import { UpdateCustomerStatusUseCase } from '../../../application/useCases/customer/updateCustomerStatus.usecase'
+import { AssignClientAdminUseCase } from '../../../application/useCases/customer/assignClientAdmin.usecase'
 import { ConfirmStatusModal } from '../../components/customer/ConfirmStatusModal'
+import { AssignAdminModal } from '../../components/customer/AssignAdminModal'
 
 const customerRepository = new HttpCustomerRepository()
 const updateCustomerStatusUseCase = new UpdateCustomerStatusUseCase(customerRepository)
+const assignClientAdminUseCase = new AssignClientAdminUseCase(customerRepository)
 
 const MOCK_CUSTOMERS: Record<string, Customer> = {
   'cust-001': {
@@ -39,30 +43,46 @@ export const CustomerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [admin, setAdmin] = useState<ClientAdmin | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
-  const [isUpdating, setIsUpdating] = useState<boolean>(false)
+  // Status modal state
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState<boolean>(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false)
+
+  // Assign Admin modal state
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false)
+  const [isAssigningAdmin, setIsAssigningAdmin] = useState<boolean>(false)
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
 
-    customerRepository
-      .getById(id)
-      .then((data) => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const data = await customerRepository.getById(id)
         if (data) {
           setCustomer(data)
         } else if (MOCK_CUSTOMERS[id]) {
           setCustomer(MOCK_CUSTOMERS[id])
         }
-      })
-      .catch(() => {
+
+        const admins = await customerRepository.getAdminsByCustomerId(id)
+        // Explicitly clear or set state to prevent stale admin data when changing routes/customers
+        setAdmin(admins[0] ?? null)
+      } catch {
         if (MOCK_CUSTOMERS[id]) {
           setCustomer(MOCK_CUSTOMERS[id])
         }
-      })
-      .finally(() => setLoading(false))
+        setAdmin(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [id])
 
   const currentStatus: CustomerStatus = customer?.status || 'ACTIVE'
@@ -70,17 +90,33 @@ export const CustomerDetailPage: React.FC = () => {
 
   const handleStatusChange = async () => {
     if (!id) return
-    setIsUpdating(true)
+    setIsUpdatingStatus(true)
     setErrorMessage(null)
 
     try {
       const updatedCustomer = await updateCustomerStatusUseCase.execute(id, targetStatus)
       setCustomer(updatedCustomer)
-      setIsModalOpen(false)
+      setIsStatusModalOpen(false)
     } catch {
       setErrorMessage('Failed to update customer status. Please try again.')
     } finally {
-      setIsUpdating(false)
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  const handleAssignAdmin = async (adminData: { name: string; email: string; role: 'ADMIN' | 'OWNER' }) => {
+    if (!id) return
+    setIsAssigningAdmin(true)
+    setErrorMessage(null)
+
+    try {
+      const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
+      setAdmin(newAdmin)
+      setIsAdminModalOpen(false)
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to assign client admin.')
+    } finally {
+      setIsAssigningAdmin(false)
     }
   }
 
@@ -127,7 +163,7 @@ export const CustomerDetailPage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem' }}>
-      {/* Banner de error */}
+      {/* Error Banner */}
       {errorMessage && (
         <div
           role="alert"
@@ -145,7 +181,7 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Encabezado con Botones */}
+      {/* Header Actions */}
       <div
         style={{
           display: 'flex',
@@ -177,7 +213,7 @@ export const CustomerDetailPage: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsStatusModalOpen(true)}
           style={{
             backgroundColor: currentStatus === 'ACTIVE' ? '#b91c1c' : '#15803d', // Adjusted for >= 4.5:1 contrast
             color: '#ffffff',
@@ -194,13 +230,14 @@ export const CustomerDetailPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Tarjeta principal */}
+      {/* Main Details Card */}
       <div
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '8px',
           border: '1px solid #e4e4e7',
           padding: '1.75rem',
+          marginBottom: '1.5rem',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
         }}
       >
@@ -255,7 +292,7 @@ export const CustomerDetailPage: React.FC = () => {
           }}
         />
 
-        {/* Malla de Metadatos */}
+        {/* Metadata Grid */}
         <div
           style={{
             display: 'grid',
@@ -349,14 +386,171 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Confirmación */}
+      {/* Primary Client Admin Card */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e4e4e7',
+          padding: '1.75rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '1rem',
+          }}
+        >
+          <div>
+            <span
+              style={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                color: '#71717a',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              PRIMARY CLIENT ADMIN
+            </span>
+            <h3
+              style={{
+                margin: '0.2rem 0 0 0',
+                color: '#18181b',
+                fontSize: '1.125rem',
+                fontWeight: 700,
+              }}
+            >
+              Tenant Administrator
+            </h3>
+          </div>
+
+          {!admin && (
+            <button
+              type="button"
+              onClick={() => setIsAdminModalOpen(true)}
+              style={{
+                backgroundColor: '#18181b',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.825rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Assign Admin
+            </button>
+          )}
+        </div>
+
+        <hr
+          style={{
+            border: 'none',
+            borderTop: '1px solid #f4f4f5',
+            margin: '1rem 0',
+          }}
+        />
+
+        {admin ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1.25rem',
+            }}
+          >
+            <div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '0.725rem',
+                  fontWeight: 600,
+                  color: '#a1a1aa',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                NAME
+              </span>
+              <strong style={{ fontSize: '0.875rem', color: '#18181b' }}>{admin.name}</strong>
+            </div>
+
+            <div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '0.725rem',
+                  fontWeight: 600,
+                  color: '#a1a1aa',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                EMAIL
+              </span>
+              <span style={{ fontSize: '0.875rem', color: '#3f3f46' }}>{admin.email}</span>
+            </div>
+
+            <div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '0.725rem',
+                  fontWeight: 600,
+                  color: '#a1a1aa',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                ROLE
+              </span>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: '#f4f4f5',
+                  color: '#3f3f46',
+                }}
+              >
+                {admin.role}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: '#71717a', fontSize: '0.875rem' }}>
+            No admin assigned yet for this organization.
+          </p>
+        )}
+      </div>
+
+      {/* Confirm Status Modal */}
       <ConfirmStatusModal
-        isOpen={isModalOpen}
+        isOpen={isStatusModalOpen}
         customerName={customerName}
         targetStatus={targetStatus}
-        loading={isUpdating}
-        onClose={() => setIsModalOpen(false)}
+        loading={isUpdatingStatus}
+        onClose={() => setIsStatusModalOpen(false)}
         onConfirm={handleStatusChange}
+      />
+
+      {/* Assign Client Admin Modal */}
+      <AssignAdminModal
+        isOpen={isAdminModalOpen}
+        customerName={customerName}
+        loading={isAssigningAdmin}
+        onClose={() => setIsAdminModalOpen(false)}
+        onConfirm={handleAssignAdmin}
       />
     </div>
   )

@@ -60,7 +60,7 @@ describe('HttpCustomerRepository', () => {
       id: 'admin-1',
       customerId: 'cust-1',
       email: 'admin@acme.com',
-      fullName: 'John Doe',
+      name: 'John Doe',
       role: 'ADMIN',
       createdAt: '2026-01-01',
     }
@@ -70,7 +70,7 @@ describe('HttpCustomerRepository', () => {
     const result = await repository.assignAdmin('cust-1', {
       customerId: 'cust-1',
       email: 'admin@acme.com',
-      fullName: 'John Doe',
+      name: 'John Doe',
       role: 'ADMIN',
     })
 
