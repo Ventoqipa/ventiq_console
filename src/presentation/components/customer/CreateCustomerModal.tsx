@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { CustomerStatus, CreateCustomerDTO } from '../../../domain/customer/customer'
+import { CreateCustomerDTO } from '../../../domain/customer/customer'
 
 interface CreateCustomerModalProps {
   isOpen: boolean
@@ -13,7 +13,6 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
   onSubmit,
 }) => {
   const [name, setName] = useState('')
-  const [status, setStatus] = useState<CustomerStatus>('ACTIVE')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -29,15 +28,21 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
     try {
       setLoading(true)
       setError(null)
-      await onSubmit({ name: name.trim(), status })
+      // Incluimos el status por defecto que requiere la interfaz o DTO
+      await onSubmit({ name: name.trim(), status: 'ACTIVE' } as CreateCustomerDTO)
       setName('')
-      setStatus('ACTIVE')
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create customer')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleClose = () => {
+    setName('')
+    setError(null)
+    onClose()
   }
 
   return (
@@ -95,7 +100,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
             <label
               style={{
                 display: 'block',
@@ -112,6 +117,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Acme Corp"
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem',
@@ -124,37 +130,6 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
             />
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: '#3f3f46',
-                marginBottom: '0.35rem',
-              }}
-            >
-              Initial Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as CustomerStatus)}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                fontSize: '0.875rem',
-                borderRadius: '6px',
-                border: '1px solid #d4d4d8',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-              }}
-            >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-            </select>
-          </div>
-
           <div
             style={{
               display: 'flex',
@@ -164,7 +139,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
           >
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={loading}
               style={{
                 backgroundColor: '#ffffff',
@@ -190,7 +165,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
                 padding: '0.5rem 1rem',
                 fontSize: '0.825rem',
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
               }}
             >

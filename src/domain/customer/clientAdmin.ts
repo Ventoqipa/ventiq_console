@@ -1,8 +1,16 @@
 export interface ClientAdmin {
   id: string
-  customerId: string
+  fullName?: string
   email: string
-  fullName: string
-  role: 'ADMIN' | 'OWNER'
-  createdAt: string
+  role?: string
+  status?: string
+  createdAt?: string
+}
+
+export interface AssignAdminDTO {
+  fullName?: string
+  email: string
+  password: string
+  role?: 'ADMIN'
+  customerId?: string
 }

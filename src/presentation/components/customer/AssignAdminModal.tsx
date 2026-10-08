@@ -5,7 +5,7 @@ interface AssignAdminModalProps {
   customerName: string
   loading: boolean
   onClose: () => void
-  onConfirm: (adminData: { fullName: string; email: string; role: 'ADMIN' | 'OWNER' }) => void
+  onConfirm: (adminData: { fullName: string; email: string; password: string }) => void
 }
 
 export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
@@ -17,7 +17,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 }) => {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'ADMIN' | 'OWNER'>('ADMIN')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const modalRef = useRef<HTMLDivElement>(null)
@@ -26,24 +26,28 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
   useEffect(() => {
     if (!isOpen) return
 
-    // Save previously focused element to restore it on close
+    // Guardar el elemento con foco previo solo al abrir
     previousFocusRef.current = document.activeElement as HTMLElement
 
-    // Focus first interactive element in modal
+    // Enfocar automáticamente el primer elemento interactivo
     const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     if (focusableElements && focusableElements.length > 0) {
       focusableElements[0].focus()
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !loading) {
-        onClose()
+      // Manejar tecla Escape
+      if (event.key === 'Escape') {
+        if (!loading) {
+          event.preventDefault()
+          onClose()
+        }
         return
       }
 
-      // Keep focus trapped within modal overlay
+      // Manejar Focus Trap con tecla Tab
       if (event.key === 'Tab' && modalRef.current) {
         const focusables = modalRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
@@ -71,7 +75,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      if (previousFocusRef.current) {
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
         previousFocusRef.current.focus()
       }
     }
@@ -90,9 +94,13 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
       setError('A valid email address is required')
       return
     }
+    if (!password || password.length < 12) {
+      setError('Password must be at least 12 characters')
+      return
+    }
 
     setError(null)
-    onConfirm({ fullName, email, role })
+    onConfirm({ fullName, email, password })
   }
 
   return (
@@ -150,7 +158,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="client-admin-name"
@@ -215,7 +223,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label
-              htmlFor="client-admin-role"
+              htmlFor="client-admin-password"
               style={{
                 display: 'block',
                 fontSize: '0.75rem',
@@ -225,12 +233,14 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
                 textTransform: 'uppercase',
               }}
             >
-              Role
+              Password (min. 12 chars)
             </label>
-            <select
-              id="client-admin-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'ADMIN' | 'OWNER')}
+            <input
+              id="client-admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem',
@@ -238,12 +248,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
                 border: '1px solid #d4d4d8',
                 fontSize: '0.875rem',
                 boxSizing: 'border-box',
-                backgroundColor: '#ffffff',
               }}
-            >
-              <option value="ADMIN">ADMIN</option>
-              <option value="OWNER">OWNER</option>
-            </select>
+            />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>

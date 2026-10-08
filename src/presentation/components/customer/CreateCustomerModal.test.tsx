@@ -15,10 +15,10 @@ describe('CreateCustomerModal', () => {
   it('shows error validation when name is empty', async () => {
     render(<CreateCustomerModal isOpen={true} onClose={vi.fn()} onSubmit={vi.fn()} />)
 
-    const submitButtons = screen.getAllByRole('button', { name: 'Create Customer' })
-    fireEvent.click(submitButtons[submitButtons.length - 1])
+    const submitBtn = screen.getByRole('button', { name: 'Create Customer' })
+    fireEvent.click(submitBtn)
 
-    expect(await screen.findByText('⚠️ Customer name is required.')).toBeDefined()
+    expect(await screen.findByText('⚠️ Customer name is required.')).toBeInTheDocument()
   })
 
   it('calls onSubmit with correct data when form is valid', async () => {
@@ -27,15 +27,14 @@ describe('CreateCustomerModal', () => {
 
     render(<CreateCustomerModal isOpen={true} onClose={handleClose} onSubmit={handleSubmit} />)
 
-    const inputs = screen.getAllByPlaceholderText('e.g. Acme Corp')
-    const nameInput = inputs[inputs.length - 1]
+    const nameInput = screen.getByPlaceholderText('e.g. Acme Corp')
 
     fireEvent.change(nameInput, {
       target: { value: 'Acme Corp' },
     })
 
-    const submitButtons = screen.getAllByRole('button', { name: 'Create Customer' })
-    fireEvent.click(submitButtons[submitButtons.length - 1])
+    const submitBtn = screen.getByRole('button', { name: 'Create Customer' })
+    fireEvent.click(submitBtn)
 
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledWith({ name: 'Acme Corp', status: 'ACTIVE' })
