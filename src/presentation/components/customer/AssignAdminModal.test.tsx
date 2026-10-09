@@ -13,6 +13,13 @@ describe('AssignAdminModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+
+    // Mock para navigator.clipboard.writeText en JSDom / Vitest
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockImplementation(() => Promise.resolve()),
+      },
+    })
   })
 
   afterEach(() => {
@@ -87,6 +94,34 @@ describe('AssignAdminModal', () => {
 
     expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1)
     expect(defaultProps.onConfirm).toHaveBeenCalledWith(validData)
+  })
+
+  it('should generate an automatic password when Generate button is clicked', () => {
+    render(<AssignAdminModal {...defaultProps} />)
+
+    const generateBtn = screen.getByRole('button', { name: /generate password/i })
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement
+
+    expect(passwordInput.value).toBe('')
+
+    fireEvent.click(generateBtn)
+
+    expect(passwordInput.value.length).toBeGreaterThanOrEqual(12)
+  })
+
+  it('should copy generated password to clipboard when Copy button is clicked', async () => {
+    render(<AssignAdminModal {...defaultProps} />)
+
+    const generateBtn = screen.getByRole('button', { name: /generate password/i })
+    fireEvent.click(generateBtn)
+
+    const copyBtn = screen.getByRole('button', { name: /copy/i })
+    fireEvent.click(copyBtn)
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1)
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      (screen.getByLabelText(/password/i) as HTMLInputElement).value
+    )
   })
 
   it('should call onClose when Cancel is clicked', () => {
