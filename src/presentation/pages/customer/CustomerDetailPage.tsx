@@ -1,61 +1,79 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Customer, CustomerStatus } from '../../../domain/customer/customer'
 import { ClientAdmin } from '../../../domain/customer/clientAdmin'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
+import { CustomerRepository } from '../../../application/ports/customerRepository.port'
 import { UpdateCustomerStatusUseCase } from '../../../application/useCases/customer/updateCustomerStatus.usecase'
+import { UpdateCustomerUserStatusUseCase } from '../../../application/useCases/customer/updateCustomerUserStatus.usecase'
 import { AssignClientAdminUseCase } from '../../../application/useCases/customer/assignClientAdmin.usecase'
 import { ConfirmStatusModal } from '../../components/customer/ConfirmStatusModal'
 import { AssignAdminModal } from '../../components/customer/AssignAdminModal'
 
-const customerRepository = new HttpCustomerRepository()
-const updateCustomerStatusUseCase = new UpdateCustomerStatusUseCase(customerRepository)
-const assignClientAdminUseCase = new AssignClientAdminUseCase(customerRepository)
+interface CustomerDetailPageProps {
+  repository?: CustomerRepository
+}
 
-export const CustomerDetailPage: React.FC = () => {
+const defaultRepository = new HttpCustomerRepository()
+
+export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
+  repository = defaultRepository,
+}) => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
-  const [admin, setAdmin] = useState<ClientAdmin | null>(null)
+  const [users, setUsers] = useState<ClientAdmin[]>([])
   const [loading, setLoading] = useState<boolean>(true)
 
-  // Status modal state
+  // Modals state
   const [isStatusModalOpen, setIsStatusModalOpen] = useState<boolean>(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false)
-
-  // Assign Admin modal state
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false)
   const [isAssigningAdmin, setIsAssigningAdmin] = useState<boolean>(false)
 
+  // User status update state
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  useEffect(() => {
+  // Memoise use cases to prevent re-instantiation on every render
+  const updateCustomerStatusUseCase = useMemo(
+    () => new UpdateCustomerStatusUseCase(repository),
+    [repository]
+  )
+  const updateUserStatusUseCase = useMemo(
+    () => new UpdateCustomerUserStatusUseCase(repository),
+    [repository]
+  )
+  const assignClientAdminUseCase = useMemo(
+    () => new AssignClientAdminUseCase(repository),
+    [repository]
+  )
+
+  const fetchData = useCallback(async () => {
     if (!id) return
+    try {
+      setLoading(true)
+      const data = await repository.getById(id)
+      setCustomer(data)
 
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const data = await customerRepository.getById(id)
-        setCustomer(data)
-
-        if (data) {
-          const admins = await customerRepository.getAdminsByCustomerId(id)
-          setAdmin(admins[0] ?? null)
-        } else {
-          setAdmin(null)
-        }
-      } catch {
-        // Clear customer and admin state on route lookup failure
-        setCustomer(null)
-        setAdmin(null)
-        setErrorMessage('Failed to load customer details.')
-      } finally {
-        setLoading(false)
+      if (data) {
+        const adminList = await repository.getAdminsByCustomerId(id)
+        setUsers(adminList)
+      } else {
+        setUsers([])
       }
+    } catch {
+      setCustomer(null)
+      setUsers([])
+      setErrorMessage('Failed to load customer details.')
+    } finally {
+      setLoading(false)
     }
+  }, [id, repository])
 
+  useEffect(() => {
     fetchData()
-  }, [id])
+  }, [fetchData])
 
   const currentStatus: CustomerStatus = customer?.status || 'ACTIVE'
   const targetStatus: CustomerStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
@@ -76,14 +94,30 @@ export const CustomerDetailPage: React.FC = () => {
     }
   }
 
-  const handleAssignAdmin = async (adminData: { fullName: string; email: string; role: 'ADMIN' | 'OWNER' }) => {
+  const handleToggleUserStatus = async (user: ClientAdmin) => {
+    if (!id) return
+    const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+
+    try {
+      setUpdatingUserId(user.id)
+      setErrorMessage(null)
+      await updateUserStatusUseCase.execute(id, user.id, newStatus)
+      await fetchData()
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to update user status.')
+    } finally {
+      setUpdatingUserId(null)
+    }
+  }
+
+  const handleAssignAdmin = async (adminData: { fullName: string; email: string; password: string }) => {
     if (!id) return
     setIsAssigningAdmin(true)
     setErrorMessage(null)
 
     try {
-      const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
-      setAdmin(newAdmin)
+      await assignClientAdminUseCase.execute(id, adminData)
+      await fetchData()
       setIsAdminModalOpen(false)
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to assign client admin.')
@@ -100,9 +134,12 @@ export const CustomerDetailPage: React.FC = () => {
     if (upper === 'ACTIVE') {
       bg = '#dcfce7'
       color = '#14532d'
-    } else if (upper === 'SUSPENDED') {
+    } else if (upper === 'SUSPENDED' || upper === 'INACTIVE') {
       bg = '#fee2e2'
       color = '#991b1b'
+    } else if (upper === 'PENDING') {
+      bg = '#fef3c7'
+      color = '#92400e'
     }
 
     return (
@@ -121,6 +158,18 @@ export const CustomerDetailPage: React.FC = () => {
         {upper}
       </span>
     )
+  }
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—'
+    const parsedDate = new Date(dateStr)
+    if (isNaN(parsedDate.getTime())) return '—'
+    return parsedDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
   }
 
   if (loading) {
@@ -243,26 +292,14 @@ export const CustomerDetailPage: React.FC = () => {
             >
               {customerName}
             </h2>
-            <p
-              style={{
-                color: '#52525b',
-                fontSize: '0.85rem',
-                margin: 0,
-              }}
-            >
+            <p style={{ color: '#52525b', fontSize: '0.85rem', margin: 0 }}>
               Detailed information for tenant instance.
             </p>
           </div>
           {renderStatusBadge(customer?.status)}
         </div>
 
-        <hr
-          style={{
-            border: 'none',
-            borderTop: '1px solid #f4f4f5',
-            margin: '1.25rem 0',
-          }}
-        />
+        <hr style={{ border: 'none', borderTop: '1px solid #f4f4f5', margin: '1.25rem 0' }} />
 
         {/* Metadata Grid */}
         <div
@@ -294,6 +331,7 @@ export const CustomerDetailPage: React.FC = () => {
                 padding: '0.2rem 0.5rem',
                 borderRadius: '4px',
                 fontWeight: 500,
+                display: 'inline-block',
               }}
             >
               {id}
@@ -314,15 +352,19 @@ export const CustomerDetailPage: React.FC = () => {
             >
               SLUG
             </span>
-            <span
+            <code
               style={{
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 color: '#18181b',
+                backgroundColor: '#f4f4f5',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
                 fontWeight: 500,
+                display: 'inline-block',
               }}
             >
               {customer?.slug || '—'}
-            </span>
+            </code>
           </div>
 
           <div>
@@ -339,26 +381,24 @@ export const CustomerDetailPage: React.FC = () => {
             >
               CREATED AT
             </span>
-            <span
+            <code
               style={{
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 color: '#18181b',
+                backgroundColor: '#f4f4f5',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
                 fontWeight: 500,
+                display: 'inline-block',
               }}
             >
-              {customer?.createdAt
-                ? new Date(customer.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })
-                : '—'}
-            </span>
+              {formatDate(customer?.createdAt)}
+            </code>
           </div>
         </div>
       </div>
 
-      {/* Primary Client Admin Card */}
+      {/* Client Users Section */}
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -386,124 +426,92 @@ export const CustomerDetailPage: React.FC = () => {
                 letterSpacing: '0.05em',
               }}
             >
-              PRIMARY CLIENT ADMIN
+              CLIENT USERS
             </span>
-            <h3
-              style={{
-                margin: '0.2rem 0 0 0',
-                color: '#18181b',
-                fontSize: '1.125rem',
-                fontWeight: 700,
-              }}
-            >
-              Tenant Administrator
+            <h3 style={{ margin: '0.2rem 0 0 0', color: '#18181b', fontSize: '1.125rem', fontWeight: 700 }}>
+              Tenant Users & Administrators
             </h3>
           </div>
 
-          {!admin && (
-            <button
-              type="button"
-              onClick={() => setIsAdminModalOpen(true)}
-              style={{
-                backgroundColor: '#18181b',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.825rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Assign Admin
-            </button>
-          )}
-        </div>
-
-        <hr
-          style={{
-            border: 'none',
-            borderTop: '1px solid #f4f4f5',
-            margin: '1rem 0',
-          }}
-        />
-
-        {admin ? (
-          <div
+          <button
+            type="button"
+            onClick={() => setIsAdminModalOpen(true)}
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1.25rem',
+              backgroundColor: '#18181b',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '0.4rem 0.85rem',
+              fontSize: '0.825rem',
+              fontWeight: 600,
+              cursor: 'pointer',
             }}
           >
-            <div>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  color: '#a1a1aa',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                NAME
-              </span>
-              <strong style={{ fontSize: '0.875rem', color: '#18181b' }}>
-                {admin.fullName}
-              </strong>
-            </div>
+            + Assign User
+          </button>
+        </div>
 
-            <div>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  color: '#a1a1aa',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                EMAIL
-              </span>
-              <span style={{ fontSize: '0.875rem', color: '#3f3f46' }}>{admin.email}</span>
-            </div>
+        <hr style={{ border: 'none', borderTop: '1px solid #f4f4f5', margin: '1rem 0' }} />
 
-            <div>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  color: '#a1a1aa',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                ROLE
-              </span>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  backgroundColor: '#f4f4f5',
-                  color: '#3f3f46',
-                }}
-              >
-                {admin.role}
-              </span>
-            </div>
+        {users.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {users.map((usr) => {
+              const isUserActive = usr.status === 'ACTIVE'
+              const isUpdatingThisUser = updatingUserId === usr.id
+
+              return (
+                <div
+                  key={usr.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.85rem 1rem',
+                    border: '1px solid #e4e4e7',
+                    borderRadius: '6px',
+                    backgroundColor: '#fafafa',
+                  }}
+                >
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '0.875rem', color: '#18181b' }}>
+                      {usr.fullName || usr.email}
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: '#71717a' }}>{usr.email}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {renderStatusBadge(usr.status || 'ACTIVE')}
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingThisUser}
+                      onClick={() => handleToggleUserStatus(usr)}
+                      style={{
+                        backgroundColor: isUserActive ? '#ffffff' : '#15803d',
+                        color: isUserActive ? '#dc2626' : '#ffffff',
+                        border: `1px solid ${isUserActive ? '#fecaca' : '#15803d'}`,
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        fontSize: '0.775rem',
+                        fontWeight: 600,
+                        cursor: isUpdatingThisUser ? 'not-allowed' : 'pointer',
+                        opacity: isUpdatingThisUser ? 0.6 : 1,
+                      }}
+                    >
+                      {isUpdatingThisUser
+                        ? 'Updating...'
+                        : isUserActive
+                        ? 'Suspend'
+                        : 'Activate'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
           <p style={{ margin: 0, color: '#71717a', fontSize: '0.875rem' }}>
-            No admin assigned yet for this organization.
+            No users registered for this organization yet.
           </p>
         )}
       </div>

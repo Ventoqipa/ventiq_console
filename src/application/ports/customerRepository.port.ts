@@ -1,10 +1,19 @@
-import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/customer/customer'
-import { ClientAdmin } from '../../domain/customer/clientAdmin'
+import { Customer, CustomerStatus } from '../../domain/customer/customer'
+import { ClientAdmin, AssignAdminDTO } from '../../domain/customer/clientAdmin'
 
 export interface CustomerRepository {
   list(): Promise<Customer[]>
   getById(id: string): Promise<Customer | null>
-  create(data: CreateCustomerDTO): Promise<Customer>
+  create(customer: Partial<Customer>): Promise<Customer>
   updateStatus(id: string, status: CustomerStatus): Promise<Customer>
-  assignAdmin(customerId: string, adminData: Omit<ClientAdmin, 'id' | 'createdAt'>): Promise<ClientAdmin>
+  getAdminsByCustomerId(customerId: string): Promise<ClientAdmin[]>
+  assignAdmin(
+    customerId: string,
+    adminData: AssignAdminDTO
+  ): Promise<ClientAdmin>
+  updateUserStatus(
+    customerId: string,
+    userId: string,
+    status: 'ACTIVE' | 'SUSPENDED'
+  ): Promise<ClientAdmin>
 }

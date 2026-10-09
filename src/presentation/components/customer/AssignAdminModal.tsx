@@ -5,7 +5,21 @@ interface AssignAdminModalProps {
   customerName: string
   loading: boolean
   onClose: () => void
-  onConfirm: (adminData: { fullName: string; email: string; role: 'ADMIN' | 'OWNER' }) => void
+  onConfirm: (adminData: { fullName: string; email: string; password: string }) => void
+}
+
+const generateSecurePassword = (length = 14): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+  let pass = ''
+  pass += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
+  pass += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
+  pass += '0123456789'[Math.floor(Math.random() * 10)]
+  pass += '!@#$%^&*'[Math.floor(Math.random() * 8)]
+
+  for (let i = pass.length; i < length; i++) {
+    pass += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return pass.split('').sort(() => 0.5 - Math.random()).join('')
 }
 
 export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
@@ -17,8 +31,9 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 }) => {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'ADMIN' | 'OWNER'>('ADMIN')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -26,24 +41,24 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
   useEffect(() => {
     if (!isOpen) return
 
-    // Save previously focused element to restore it on close
     previousFocusRef.current = document.activeElement as HTMLElement
 
-    // Focus first interactive element in modal
     const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     if (focusableElements && focusableElements.length > 0) {
       focusableElements[0].focus()
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !loading) {
-        onClose()
+      if (event.key === 'Escape') {
+        if (!loading) {
+          event.preventDefault()
+          onClose()
+        }
         return
       }
 
-      // Keep focus trapped within modal overlay
       if (event.key === 'Tab' && modalRef.current) {
         const focusables = modalRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
@@ -71,13 +86,27 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      if (previousFocusRef.current) {
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
         previousFocusRef.current.focus()
       }
     }
   }, [isOpen, loading, onClose])
 
   if (!isOpen) return null
+
+  const handleGeneratePassword = () => {
+    const newPass = generateSecurePassword(14)
+    setPassword(newPass)
+    setError(null)
+    setCopied(false)
+  }
+
+  const handleCopyPassword = async () => {
+    if (!password) return
+    await navigator.clipboard.writeText(password)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,9 +119,13 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
       setError('A valid email address is required')
       return
     }
+    if (!password || password.length < 12) {
+      setError('Password must be at least 12 characters')
+      return
+    }
 
     setError(null)
-    onConfirm({ fullName, email, role })
+    onConfirm({ fullName, email, password })
   }
 
   return (
@@ -150,7 +183,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
+          {/* Full Name */}
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="client-admin-name"
@@ -182,6 +216,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             />
           </div>
 
+          {/* Email Address */}
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="client-admin-email"
@@ -213,39 +248,77 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             />
           </div>
 
+          {/* Password con botón de autogenerado y copiado */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="client-admin-role"
-              style={{
-                display: 'block',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#3f3f46',
-                marginBottom: '0.25rem',
-                textTransform: 'uppercase',
-              }}
-            >
-              Role
-            </label>
-            <select
-              id="client-admin-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'ADMIN' | 'OWNER')}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid #d4d4d8',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              <option value="ADMIN">ADMIN</option>
-              <option value="OWNER">OWNER</option>
-            </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <label
+                htmlFor="client-admin-password"
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#3f3f46',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Password (min. 12 chars)
+              </label>
+              <button
+                type="button"
+                onClick={handleGeneratePassword}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                ⚡ Generate Password
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                id="client-admin-password"
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter or generate password"
+                style={{
+                  flex: 1,
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid #d4d4d8',
+                  fontSize: '0.875rem',
+                  fontFamily: 'monospace',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {password && (
+                <button
+                  type="button"
+                  onClick={handleCopyPassword}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '6px',
+                    border: '1px solid #d4d4d8',
+                    backgroundColor: copied ? '#dcfce7' : '#f4f4f5',
+                    color: copied ? '#15803d' : '#3f3f46',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {copied ? '✓ Copied' : 'Copy'}
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Modal Footer Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button
               type="button"
@@ -275,7 +348,8 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
                 borderRadius: '6px',
                 fontSize: '0.825rem',
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
               }}
             >
               {loading ? 'Assigning...' : 'Assign Admin'}

@@ -1,26 +1,54 @@
 import React, { useState } from 'react'
+import { ApiClient } from '../../infrastructure/api/apiClient'
+import { apiConfig } from '../../shared/api/config'
 
 export interface LoginPageProps {
   onLoginSuccess: () => void
+}
+
+interface LoginResponse {
+  accessToken: string
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) {
       setError('Please enter your email and password.')
       return
     }
-    // Simulated authentication: store session in local storage
-    localStorage.setItem('user', JSON.stringify({ email }))
-    localStorage.setItem('token', 'simulated-jwt-token')
 
+    setIsLoading(true)
     setError(null)
-    onLoginSuccess()
+
+    try {
+      if (apiConfig.useMock) {
+        // Simulated authentication for mock mode
+        localStorage.setItem('user', JSON.stringify({ email }))
+        localStorage.setItem('ventiq_auth_token', 'simulated-jwt-token')
+      } else {
+        // Real API authentication against Railway backend
+        const response = await ApiClient.post<LoginResponse>('/auth/login', {
+          email,
+          password,
+        })
+
+        localStorage.setItem('user', JSON.stringify({ email }))
+        localStorage.setItem('ventiq_auth_token', response.accessToken)
+      }
+
+      onLoginSuccess()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid credentials or server error.'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -124,6 +152,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               placeholder="admin@ventiq.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
               style={{
                 width: '100%',
                 padding: '0.6rem 0.75rem',
@@ -158,6 +187,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
               style={{
                 width: '100%',
                 padding: '0.6rem 0.75rem',
@@ -173,6 +203,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           <button
             type="submit"
+            disabled={isLoading}
             style={{
               width: '100%',
               backgroundColor: '#18181b',
@@ -182,11 +213,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               padding: '0.65rem',
               fontSize: '0.875rem',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.7 : 1,
               transition: 'background-color 0.2s',
             }}
           >
-            Sign In
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
