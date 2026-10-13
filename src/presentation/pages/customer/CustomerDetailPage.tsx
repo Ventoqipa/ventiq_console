@@ -183,7 +183,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
   const customerName = customer?.name || `Customer (${id})`
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+    <div style={{ width: '100%', padding: '0.75rem 2rem', boxSizing: 'border-box' }}>
       {/* Error Banner */}
       {errorMessage && (
         <div
