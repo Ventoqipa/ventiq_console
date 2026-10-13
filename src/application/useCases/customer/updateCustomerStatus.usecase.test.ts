@@ -13,7 +13,9 @@ describe('UpdateCustomerStatusUseCase', () => {
       getById: vi.fn(),
       create: vi.fn(),
       updateStatus: vi.fn(),
+      getAdminsByCustomerId: vi.fn(),
       assignAdmin: vi.fn(),
+      updateUserStatus: vi.fn(),
     }
     useCase = new UpdateCustomerStatusUseCase(mockRepository)
   })

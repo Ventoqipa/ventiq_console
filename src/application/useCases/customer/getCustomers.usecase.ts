@@ -10,7 +10,6 @@ export class GetCustomersUseCase {
   constructor(private readonly customerRepository: CustomerRepository) {}
 
   async execute(filters?: GetCustomersFilters): Promise<Customer[]> {
-    // 1. Llamamos a list() según el puerto
     const customers: Customer[] = await this.customerRepository.list()
 
     if (!filters) return customers
@@ -19,12 +18,11 @@ export class GetCustomersUseCase {
 
     return customers.filter((customer: Customer) => {
       const searchLower = search?.toLowerCase().trim()
-      
-      // 2. Usamos customer.slug? para evitar el error con undefined
+
       const matchesSearch =
         !searchLower ||
         customer.name.toLowerCase().includes(searchLower) ||
-        (customer.slug?.toLowerCase().includes(searchLower) ?? false)
+        customer.slug.toLowerCase().includes(searchLower)
 
       const matchesStatus = !status || status === 'ALL' || customer.status === status
 

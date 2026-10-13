@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { CreateCustomerUseCase } from './createCustomer.usecase'
 import { CustomerRepository } from '../../ports/customerRepository.port'
-import { Customer, CustomerStatus } from '../../../domain/customer/customer'
+import { Customer } from '../../../domain/customer/customer'
 
 describe('CreateCustomerUseCase', () => {
   let useCase: CreateCustomerUseCase
@@ -14,6 +14,8 @@ describe('CreateCustomerUseCase', () => {
       create: vi.fn(),
       updateStatus: vi.fn(),
       assignAdmin: vi.fn(),
+      getAdminsByCustomerId: vi.fn(),
+      updateUserStatus: vi.fn(),
     }
     useCase = new CreateCustomerUseCase(mockRepository)
   })
@@ -21,12 +23,13 @@ describe('CreateCustomerUseCase', () => {
   it('should create a customer successfully', async () => {
     const newCustomerData = { 
       name: 'Acme Corp',
-      status: 'ACTIVE' as CustomerStatus 
+      slug: 'acme-corp',
     }
     
     const createdCustomer: Customer = {
       id: 'cust-123',
       name: 'Acme Corp',
+      slug: 'acme-corp',
       status: 'ACTIVE',
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
@@ -43,10 +46,20 @@ describe('CreateCustomerUseCase', () => {
   it('should throw an error if customer name is empty', async () => {
     const invalidData = { 
       name: '', 
-      status: 'ACTIVE' as CustomerStatus 
+      slug: 'acme-corp',
     }
 
     await expect(useCase.execute(invalidData)).rejects.toThrow('Customer name is required')
+    expect(mockRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('should throw an error if customer slug is empty', async () => {
+    const invalidData = { 
+      name: 'Acme Corp', 
+      slug: '',
+    }
+
+    await expect(useCase.execute(invalidData)).rejects.toThrow('Customer slug is required')
     expect(mockRepository.create).not.toHaveBeenCalled()
   })
 })

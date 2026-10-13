@@ -99,8 +99,8 @@ export const CustomerListPage: React.FC = () => {
       const newMockCustomer: Customer = {
         id: `cust-${Date.now()}`,
         name: data.name,
-        slug: data.name.toLowerCase().replace(/\s+/g, '-'),
-        status: data.status,
+        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+        status: 'PENDING',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -120,8 +120,8 @@ export const CustomerListPage: React.FC = () => {
     } else if (upper === 'SUSPENDED') {
       bg = '#fef2f2'
       color = '#dc2626'
-    } else if (upper === 'PAUSED') {
-      bg = '#fffbebe'
+    } else if (upper === 'PENDING' || upper === 'PAUSED') {
+      bg = '#fef3c7'
       color = '#d97706'
     }
 
@@ -224,6 +224,7 @@ export const CustomerListPage: React.FC = () => {
           <option value="ALL">All Statuses</option>
           <option value="ACTIVE">ACTIVE</option>
           <option value="SUSPENDED">SUSPENDED</option>
+          <option value="PENDING">PENDING</option>
         </select>
 
         {hasActiveFilters && (

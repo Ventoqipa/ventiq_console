@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { HttpCustomerRepository } from './httpCustomerRepository'
 import { ApiClient } from '../api/apiClient'
 import { Customer } from '../../domain/customer/customer'
-import { ClientAdmin } from '../../domain/customer/clientAdmin'
 
 describe('HttpCustomerRepository', () => {
   let repository: HttpCustomerRepository
@@ -17,6 +16,7 @@ describe('HttpCustomerRepository', () => {
       {
         id: 'cust-1',
         name: 'Acme Corp',
+        slug: 'acme-corp',
         status: 'ACTIVE',
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
@@ -27,7 +27,9 @@ describe('HttpCustomerRepository', () => {
 
     const result = await repository.list()
     expect(result).toEqual(mockCustomers)
-    expect(ApiClient.request).toHaveBeenCalledWith('/customers')
+    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers', {
+      method: 'GET',
+    })
   })
 
   it('should propagate error when getById fails', async () => {
@@ -36,10 +38,35 @@ describe('HttpCustomerRepository', () => {
     await expect(repository.getById('invalid-id')).rejects.toThrow('Not found')
   })
 
+  it('should create a new customer with name and generated slug', async () => {
+    const mockCreated = {
+      id: 'cust-1',
+      name: 'Acme Media',
+      slug: 'acme-media',
+      status: 'PENDING' as const,
+      createdAt: '2026-10-12',
+      updatedAt: '2026-10-12',
+    }
+
+    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockCreated)
+
+    const result = await repository.create({ name: 'Acme Media', slug: 'acme-media' })
+
+    expect(result).toEqual(mockCreated)
+    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Acme Media',
+        slug: 'acme-media',
+      }),
+    })
+  })
+
   it('should update customer status', async () => {
     const mockUpdated: Customer = {
       id: 'cust-1',
       name: 'Acme Corp',
+      slug: 'acme-corp',
       status: 'SUSPENDED',
       createdAt: '2026-01-01',
       updatedAt: '2026-01-02',
@@ -49,32 +76,41 @@ describe('HttpCustomerRepository', () => {
 
     const result = await repository.updateStatus('cust-1', 'SUSPENDED')
     expect(result.status).toBe('SUSPENDED')
-    expect(ApiClient.request).toHaveBeenCalledWith('/customers/cust-1/status', {
+    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers/cust-1/status', {
       method: 'PATCH',
       body: JSON.stringify({ status: 'SUSPENDED' }),
     })
   })
 
   it('should assign a client admin', async () => {
-    const mockAdmin: ClientAdmin = {
+    const mockAdmin = {
       id: 'admin-1',
-      customerId: 'cust-1',
       email: 'admin@acme.com',
       fullName: 'John Doe',
       role: 'ADMIN',
+      status: 'ACTIVE',
       createdAt: '2026-01-01',
+    }
+
+    const adminPayload = {
+      fullName: 'John Doe',
+      email: 'admin@acme.com',
+      password: 'Password123456!',
     }
 
     vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockAdmin)
 
-    const result = await repository.assignAdmin('cust-1', {
-      customerId: 'cust-1',
-      email: 'admin@acme.com',
-      fullName: 'John Doe',
-      role: 'ADMIN',
-    })
+    const result = await repository.assignAdmin('cust-1', adminPayload)
 
     expect(result).toEqual(mockAdmin)
+    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers/cust-1/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        fullName: 'John Doe',
+        email: 'admin@acme.com',
+        password: 'Password123456!',
+      }),
+    })
   })
 
   it('should propagate error when updateStatus API request fails', async () => {

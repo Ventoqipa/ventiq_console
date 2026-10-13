@@ -24,6 +24,7 @@ describe('AssignClientAdminUseCase', () => {
     const adminData = {
       fullName: 'John Doe',
       email: 'john.doe@acme.com',
+      password: 'Password123!',
       role: 'ADMIN' as const,
     }
 
@@ -40,6 +41,7 @@ describe('AssignClientAdminUseCase', () => {
     const adminData = {
       fullName: 'John Doe',
       email: 'john.doe@acme.com',
+      password: 'Password123!',
       role: 'ADMIN' as const,
     }
 
@@ -50,6 +52,7 @@ describe('AssignClientAdminUseCase', () => {
     const adminData = {
       fullName: 'John Doe',
       email: 'invalid-email',
+      password: 'Password123!',
       role: 'ADMIN' as const,
     }
 
@@ -60,6 +63,7 @@ describe('AssignClientAdminUseCase', () => {
     const adminData = {
       fullName: '',
       email: 'john.doe@acme.com',
+      password: 'Password123!',
       role: 'ADMIN' as const,
     }
 
