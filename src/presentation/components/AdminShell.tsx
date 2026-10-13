@@ -199,7 +199,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
         </header>
 
         {/* Dynamic Route Content */}
-        <main style={{ padding: '2rem 1.75rem', flex: 1 }}>
+        <main style={{ padding: '1.25rem 1.75rem', flex: 1 }}>
           <Outlet />
         </main>
       </div>

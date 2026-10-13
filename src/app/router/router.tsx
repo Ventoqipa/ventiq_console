@@ -6,16 +6,13 @@ import { CustomerListPage } from '../../presentation/pages/customer/CustomerList
 import { LoginPage } from '../../presentation/pages/LoginPage'
 
 const handleLogout = () => {
-  // Limpiamos tokens o sesión guardada
-  localStorage.removeItem('token')
+  localStorage.removeItem('ventiq_auth_token')
   localStorage.removeItem('user')
-  // Redirigimos al Login
   window.location.href = '/login'
 }
 
-// Función auxiliar simple para verificar si hay sesión activa
 const isAuthenticated = () => {
-  return Boolean(localStorage.getItem('token') || localStorage.getItem('user'))
+  return Boolean(localStorage.getItem('ventiq_auth_token') || localStorage.getItem('user'))
 }
 
 export const router = createBrowserRouter([
@@ -39,14 +36,14 @@ export const router = createBrowserRouter([
         path: 'customers',
         element: <CustomerListPage />,
       },
+      {
+        path: 'customers/:id',
+        element: <CustomerDetailPage />,
+      },
     ],
   },
   {
     path: '*',
     element: <Navigate to="/login" replace />,
   },
-  {
-  path: 'customers/:id',
-  element: <CustomerDetailPage />,
-}
 ])

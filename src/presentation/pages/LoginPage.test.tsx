@@ -29,8 +29,24 @@ describe('LoginPage', () => {
     expect(screen.getByText('Ventiq Console')).toBeInTheDocument()
     expect(screen.getByText('Enter your credentials to access the console')).toBeInTheDocument()
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/password/i, { selector: 'input' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+  })
+
+  it('toggles password visibility when clicking the eye button', () => {
+    render(<LoginPage onLoginSuccess={mockOnLoginSuccess} />)
+
+    const passwordInput = screen.getByLabelText(/password/i, { selector: 'input' }) as HTMLInputElement
+    const toggleButton = screen.getByRole('button', { name: /show password/i })
+
+    expect(passwordInput.type).toBe('password')
+
+    fireEvent.click(toggleButton)
+    expect(passwordInput.type).toBe('text')
+    expect(screen.getByRole('button', { name: /hide password/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /hide password/i }))
+    expect(passwordInput.type).toBe('password')
   })
 
   it('shows error message if fields are empty on submit', async () => {
@@ -47,7 +63,7 @@ describe('LoginPage', () => {
     render(<LoginPage onLoginSuccess={mockOnLoginSuccess} />)
 
     fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'admin@ventiq.com' } })
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText(/password/i, { selector: 'input' }), { target: { value: 'password123' } })
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
@@ -65,7 +81,7 @@ describe('LoginPage', () => {
     render(<LoginPage onLoginSuccess={mockOnLoginSuccess} />)
 
     fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'real@ventiq.com' } })
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'securepassword' } })
+    fireEvent.change(screen.getByLabelText(/password/i, { selector: 'input' }), { target: { value: 'securepassword' } })
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
@@ -87,7 +103,7 @@ describe('LoginPage', () => {
     render(<LoginPage onLoginSuccess={mockOnLoginSuccess} />)
 
     fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'wrong@ventiq.com' } })
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'wrongpass' } })
+    fireEvent.change(screen.getByLabelText(/password/i, { selector: 'input' }), { target: { value: 'wrongpass' } })
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
