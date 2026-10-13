@@ -37,7 +37,10 @@ describe('CreateCustomerModal', () => {
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
-      expect(handleSubmit).toHaveBeenCalledWith({ name: 'Acme Corp', status: 'ACTIVE' })
+      expect(handleSubmit).toHaveBeenCalledWith({
+        name: 'Acme Corp',
+        slug: 'acme-corp',
+      })
       expect(handleClose).toHaveBeenCalled()
     })
   })

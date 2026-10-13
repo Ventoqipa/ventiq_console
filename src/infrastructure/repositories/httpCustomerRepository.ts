@@ -76,15 +76,18 @@ export class HttpCustomerRepository implements CustomerRepository {
   }
 
   async create(data: CreateCustomerDTO): Promise<Customer> {
-    // Railway API strictly requires { "name": "..." }
+    const slug = data.slug || generateSlug(data.name)
+
+    // Railway API requires { name, slug }
     const created = await ApiClient.post<RawCustomer>('/admin/customers', {
       name: data.name,
+      slug,
     })
 
     return {
       id: created.id,
       name: created.name,
-      slug: created.slug || generateSlug(created.name) || created.id,
+      slug: created.slug || slug || created.id,
       status: created.status || 'PENDING',
       createdAt: created.createdAt || '',
       updatedAt: created.updatedAt || '',
@@ -107,8 +110,8 @@ export class HttpCustomerRepository implements CustomerRepository {
     customerId: string,
     adminData: AssignAdminDTO,
   ): Promise<ClientAdmin> {
-    // Railway API strictly requires { "email", "password" }
     const payload = {
+      fullName: adminData.fullName,
       email: adminData.email,
       password: adminData.password || 'VentiqSecureAdmin2026!',
     }
@@ -120,7 +123,7 @@ export class HttpCustomerRepository implements CustomerRepository {
 
     return {
       id: response.id || 'usr_' + Date.now(),
-      fullName: adminData.fullName || response.email?.split('@')[0] || 'Admin User',
+      fullName: response.fullName || adminData.fullName || response.email?.split('@')[0] || 'Admin User',
       email: response.email || adminData.email,
       role: response.role || 'ADMIN',
       status: response.status || 'ACTIVE',

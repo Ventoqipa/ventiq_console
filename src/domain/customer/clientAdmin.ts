@@ -1,6 +1,6 @@
 export interface ClientAdmin {
   id: string
-  fullName?: string
+  fullName: string
   email: string
   role?: string
   status?: string
@@ -8,7 +8,7 @@ export interface ClientAdmin {
 }
 
 export interface AssignAdminDTO {
-  fullName?: string
+  fullName: string
   email: string
   password: string
   role?: 'ADMIN'

@@ -7,6 +7,18 @@ interface CreateCustomerModalProps {
   onSubmit: (data: CreateCustomerDTO) => Promise<void>
 }
 
+/**
+ * Helper function to generate a valid slug from customer name
+ */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
   isOpen,
   onClose,
@@ -28,8 +40,11 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
     try {
       setLoading(true)
       setError(null)
-      // Incluimos el status por defecto que requiere la interfaz o DTO
-      await onSubmit({ name: name.trim(), status: 'ACTIVE' } as CreateCustomerDTO)
+      const formattedName = name.trim()
+      await onSubmit({
+        name: formattedName,
+        slug: generateSlug(formattedName),
+      })
       setName('')
       onClose()
     } catch (err) {

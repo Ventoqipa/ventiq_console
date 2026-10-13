@@ -8,18 +8,42 @@ interface AssignAdminModalProps {
   onConfirm: (adminData: { fullName: string; email: string; password: string }) => void
 }
 
+/**
+ * Generates a cryptographically secure random password using Web Crypto API
+ */
 const generateSecurePassword = (length = 14): string => {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-  let pass = ''
-  pass += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
-  pass += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
-  pass += '0123456789'[Math.floor(Math.random() * 10)]
-  pass += '!@#$%^&*'[Math.floor(Math.random() * 8)]
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const numbers = '0123456789'
+  const symbols = '!@#$%^&*'
+  const allChars = lowercase + uppercase + numbers + symbols
 
-  for (let i = pass.length; i < length; i++) {
-    pass += chars.charAt(Math.floor(Math.random() * chars.length))
+  const getRandomIndex = (max: number): number => {
+    const randomBuffer = new Uint32Array(1)
+    window.crypto.getRandomValues(randomBuffer)
+    return randomBuffer[0] % max
   }
-  return pass.split('').sort(() => 0.5 - Math.random()).join('')
+
+  // Guarantee at least one character from each character set
+  const passwordChars = [
+    lowercase[getRandomIndex(lowercase.length)],
+    uppercase[getRandomIndex(uppercase.length)],
+    numbers[getRandomIndex(numbers.length)],
+    symbols[getRandomIndex(symbols.length)],
+  ]
+
+  // Fill remaining length
+  for (let i = passwordChars.length; i < length; i++) {
+    passwordChars.push(allChars[getRandomIndex(allChars.length)])
+  }
+
+  // Cryptographically secure Fisher-Yates shuffle
+  for (let i = passwordChars.length - 1; i > 0; i--) {
+    const j = getRandomIndex(i + 1)
+    ;[passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]]
+  }
+
+  return passwordChars.join('')
 }
 
 export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
@@ -184,7 +208,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          {/* Full Name */}
+          {/* Full Name Input */}
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="client-admin-name"
@@ -216,7 +240,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             />
           </div>
 
-          {/* Email Address */}
+          {/* Email Address Input */}
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="client-admin-email"
@@ -248,7 +272,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             />
           </div>
 
-          {/* Password con botón de autogenerado y copiado */}
+          {/* Password con Autogenerado Criptográfico y Copia */}
           <div style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
               <label
@@ -318,7 +342,7 @@ export const AssignAdminModal: React.FC<AssignAdminModalProps> = ({
             </div>
           </div>
 
-          {/* Modal Footer Actions */}
+          {/* Acciones */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button
               type="button"

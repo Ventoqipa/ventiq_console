@@ -27,6 +27,7 @@ describe('GetCustomersUseCase', () => {
     {
       id: 'cust-3',
       name: 'Stark Industries',
+      slug: 'stark-industries',
       status: 'PENDING',
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
@@ -78,13 +79,6 @@ describe('GetCustomersUseCase', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0].name).toBe('Globex Inc')
-  })
-
-  it('should correctly handle customers without slug when searching', async () => {
-    const result = await useCase.execute({ search: 'acme' })
-
-    expect(result).toHaveLength(1)
-    expect(result[0].name).toBe('Acme Corp')
   })
 
   it('should combine search and status filters', async () => {

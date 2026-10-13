@@ -20,6 +20,19 @@ describe('AssignAdminModal', () => {
         writeText: vi.fn().mockImplementation(() => Promise.resolve()),
       },
     })
+
+    // Mock para window.crypto.getRandomValues (Web Crypto API)
+    Object.defineProperty(window, 'crypto', {
+      value: {
+        getRandomValues: vi.fn().mockImplementation((buffer: Uint32Array) => {
+          for (let i = 0; i < buffer.length; i++) {
+            buffer[i] = Math.floor(Math.random() * 4294967295)
+          }
+          return buffer
+        }),
+      },
+      writable: true,
+    })
   })
 
   afterEach(() => {

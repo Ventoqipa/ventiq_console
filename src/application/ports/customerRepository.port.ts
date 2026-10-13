@@ -1,10 +1,10 @@
-import { Customer, CustomerStatus } from '../../domain/customer/customer'
+import { Customer, CustomerStatus, CreateCustomerDTO } from '../../domain/customer/customer'
 import { ClientAdmin, AssignAdminDTO } from '../../domain/customer/clientAdmin'
 
 export interface CustomerRepository {
   list(): Promise<Customer[]>
   getById(id: string): Promise<Customer | null>
-  create(customer: Partial<Customer>): Promise<Customer>
+  create(data: CreateCustomerDTO): Promise<Customer>
   updateStatus(id: string, status: CustomerStatus): Promise<Customer>
   getAdminsByCustomerId(customerId: string): Promise<ClientAdmin[]>
   assignAdmin(

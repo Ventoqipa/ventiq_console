@@ -38,6 +38,30 @@ describe('HttpCustomerRepository', () => {
     await expect(repository.getById('invalid-id')).rejects.toThrow('Not found')
   })
 
+  it('should create a new customer with name and generated slug', async () => {
+    const mockCreated = {
+      id: 'cust-1',
+      name: 'Acme Media',
+      slug: 'acme-media',
+      status: 'PENDING' as const,
+      createdAt: '2026-10-12',
+      updatedAt: '2026-10-12',
+    }
+
+    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockCreated)
+
+    const result = await repository.create({ name: 'Acme Media', slug: 'acme-media' })
+
+    expect(result).toEqual(mockCreated)
+    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Acme Media',
+        slug: 'acme-media',
+      }),
+    })
+  })
+
   it('should update customer status', async () => {
     const mockUpdated: Customer = {
       id: 'cust-1',
@@ -82,6 +106,7 @@ describe('HttpCustomerRepository', () => {
     expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers/cust-1/users', {
       method: 'POST',
       body: JSON.stringify({
+        fullName: 'John Doe',
         email: 'admin@acme.com',
         password: 'Password123456!',
       }),

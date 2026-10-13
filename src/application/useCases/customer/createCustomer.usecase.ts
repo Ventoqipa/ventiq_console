@@ -9,6 +9,10 @@ export class CreateCustomerUseCase {
       throw new Error('Customer name is required')
     }
 
+    if (!data.slug || data.slug.trim() === '') {
+      throw new Error('Customer slug is required')
+    }
+
     return await this.customerRepository.create(data)
   }
 }

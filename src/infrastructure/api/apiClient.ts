@@ -20,8 +20,9 @@ export class ApiClient {
     })
 
     if (response.status === 401) {
-      // Clear expired/invalid session
+      // Clear expired/invalid session consistently
       localStorage.removeItem('ventiq_auth_token')
+      localStorage.removeItem('ventiq_user')
     }
 
     if (!response.ok) {
