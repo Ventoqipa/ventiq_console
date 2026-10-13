@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouteObject } from 'react-router-dom'
 import { AdminShell } from '../../presentation/components/AdminShell'
 import { FoundationPage } from '../../presentation/pages/FoundationPage'
 import { CustomerDetailPage } from '../../presentation/pages/customer/CustomerDetailPage'
@@ -12,10 +12,10 @@ const handleLogout = () => {
 }
 
 const isAuthenticated = () => {
-  return Boolean(localStorage.getItem('ventiq_auth_token') || localStorage.getItem('user'))
+  return Boolean(localStorage.getItem('ventiq_auth_token'))
 }
 
-export const router = createBrowserRouter([
+export const getRoutes = (): RouteObject[] => [
   {
     path: '/login',
     element: <LoginPage onLoginSuccess={() => (window.location.href = '/')} />,
@@ -46,4 +46,6 @@ export const router = createBrowserRouter([
     path: '*',
     element: <Navigate to="/login" replace />,
   },
-])
+]
+
+export const router = createBrowserRouter(getRoutes())

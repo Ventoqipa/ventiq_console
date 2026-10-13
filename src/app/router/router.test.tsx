@@ -1,15 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdminShell } from '../../presentation/components/AdminShell'
 import { LoginPage } from '../../presentation/pages/LoginPage'
 
+// Mock para repositorios si la vista carga datos al renderizarse
+vi.mock('../../infrastructure/repositories/httpCustomerRepository', () => ({
+  HttpCustomerRepository: vi.fn().mockImplementation(() => ({
+    getById: vi.fn().mockResolvedValue({ id: 'cust-123', name: 'Test Customer', status: 'ACTIVE' }),
+    getAdminsByCustomerId: vi.fn().mockResolvedValue([]),
+  })),
+}))
+
 const isAuthenticated = () => {
-  return Boolean(localStorage.getItem('ventiq_auth_token') || localStorage.getItem('user'))
+  return Boolean(localStorage.getItem('ventiq_auth_token'))
 }
 
-// Recreamos la estructura de guard de rutas limpia para la prueba de entorno jsdom
-const TestApp = () => (
+const AppRouter = () => (
   <Routes>
     <Route path="/login" element={<LoginPage onLoginSuccess={() => {}} />} />
     <Route
@@ -40,7 +47,7 @@ describe('Router Configuration', () => {
   it('redirects unauthenticated users from protected routes to /login', () => {
     render(
       <MemoryRouter initialEntries={['/customers']}>
-        <TestApp />
+        <AppRouter />
       </MemoryRouter>
     )
 
@@ -55,7 +62,7 @@ describe('Router Configuration', () => {
 
     render(
       <MemoryRouter initialEntries={['/customers/cust-123']}>
-        <TestApp />
+        <AppRouter />
       </MemoryRouter>
     )
 
