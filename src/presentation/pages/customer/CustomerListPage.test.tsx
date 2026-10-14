@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved, cleanup 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { CustomerListPage } from './CustomerListPage'
-import { ToastProvider } from '../../context/ToastContext'
+import { ToastProvider } from '../../context'
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')

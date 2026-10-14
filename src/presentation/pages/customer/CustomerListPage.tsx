@@ -73,6 +73,7 @@ export const CustomerListPage: React.FC = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'No se pudo crear el cliente. Inténtalo de nuevo.'
       showToast(errorMessage, 'error')
+      throw err // Propagar la excepción para que CreateCustomerModal sepa que falló y NO borre ni cierre el formulario
     }
   }
 

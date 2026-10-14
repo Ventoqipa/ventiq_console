@@ -20,16 +20,38 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
+  // 1. Efecto dedicado EXCLUSIVAMENTE a guardar y restaurar el foco al abrir y cerrar el modal
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement
+    } else {
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [isOpen])
+
+  // Restauración de seguridad al desmontar el componente si estaba abierto
+  useEffect(() => {
+    return () => {
+      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
+        previousFocusRef.current.focus()
+      }
+    }
+  }, [])
+
+  // 2. Efecto para manejar el foco inicial y las interacciones de teclado (Escape / Tab)
   useEffect(() => {
     if (!isOpen) return
 
-    previousFocusRef.current = document.activeElement as HTMLElement
-
+    // Enfocar el primer elemento no deshabilitado o el contenedor del modal si todos están deshabilitados
     const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
     )
     if (focusableElements && focusableElements.length > 0) {
       focusableElements[0].focus()
+    } else {
+      modalRef.current?.focus()
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -42,7 +64,13 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         const focusables = modalRef.current.querySelectorAll<HTMLElement>(
           'button:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
         )
-        if (focusables.length === 0) return
+
+        // Si los botones están deshabilitados durante el loading, mantener el foco atrapado en el contenedor del modal
+        if (focusables.length === 0) {
+          event.preventDefault()
+          modalRef.current.focus()
+          return
+        }
 
         const firstElement = focusables[0]
         const lastElement = focusables[focusables.length - 1]
@@ -65,9 +93,6 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-        previousFocusRef.current.focus()
-      }
     }
   }, [isOpen, loading, onClose])
 
@@ -93,6 +118,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
     >
       <div
         ref={modalRef}
+        tabIndex={-1}
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '8px',
@@ -101,6 +127,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           width: '100%',
           maxWidth: '420px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          outline: 'none',
         }}
       >
         <h3
@@ -139,7 +166,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
             Cancel
