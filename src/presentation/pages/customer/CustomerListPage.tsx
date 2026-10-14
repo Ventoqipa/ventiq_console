@@ -1,47 +1,19 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Customer, CreateCustomerDTO, CustomerStatus } from '../../../domain/customer/customer'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
 import { GetCustomersUseCase } from '../../../application/useCases/customer/getCustomers.usecase'
 import { CreateCustomerUseCase } from '../../../application/useCases/customer/createCustomer.usecase'
 import { CreateCustomerModal } from '../../components/customer/CreateCustomerModal'
+import { useToast } from '../../context'
 
 const customerRepository = new HttpCustomerRepository()
 const getCustomersUseCase = new GetCustomersUseCase(customerRepository)
 const createCustomerUseCase = new CreateCustomerUseCase(customerRepository)
 
-// Fallback mock data in case backend API is not available
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: 'cust-001',
-    name: 'Acme Corporation',
-    slug: 'acme-corp',
-    status: 'ACTIVE',
-    createdAt: '2026-01-15T10:00:00Z',
-    updatedAt: '2026-01-15T10:00:00Z',
-  },
-  {
-    id: 'cust-002',
-    name: 'Stark Industries',
-    slug: 'stark-ind',
-    status: 'SUSPENDED',
-    createdAt: '2026-02-20T14:30:00Z',
-    updatedAt: '2026-02-20T14:30:00Z',
-  },
-  {
-    id: 'cust-003',
-    name: 'Wayne Enterprises',
-    slug: 'wayne-ent',
-    status: 'ACTIVE',
-    createdAt: '2026-03-05T09:15:00Z',
-    updatedAt: '2026-03-05T09:15:00Z',
-  },
-]
-
 export const CustomerListPage: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false)
 
   // Filter States
@@ -49,25 +21,26 @@ export const CustomerListPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<CustomerStatus | 'ALL'>('ALL')
 
   const navigate = useNavigate()
+  const { showToast } = useToast()
 
-  const fetchCustomers = () => {
+  const fetchCustomers = useCallback(() => {
     setLoading(true)
     getCustomersUseCase
       .execute()
       .then((data) => {
         setCustomers(data)
-        setError(null)
       })
-      .catch(() => {
-        setError('Failed to load customers from server.')
-        setCustomers(MOCK_CUSTOMERS) // Fallback to mock data for presentation
+      .catch((err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Error al cargar la lista de clientes desde el servidor.'
+        showToast(errorMessage, 'error')
+        setCustomers([])
       })
       .finally(() => setLoading(false))
-  }
+  }, [showToast])
 
   useEffect(() => {
     fetchCustomers()
-  }, [])
+  }, [fetchCustomers])
 
   // Reactive UI Filtering
   const filteredCustomers = useMemo(() => {
@@ -95,16 +68,11 @@ export const CustomerListPage: React.FC = () => {
     try {
       const created = await createCustomerUseCase.execute(data)
       setCustomers((prev) => [created, ...prev])
-    } catch {
-      const newMockCustomer: Customer = {
-        id: `cust-${Date.now()}`,
-        name: data.name,
-        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      setCustomers((prev) => [newMockCustomer, ...prev])
+      showToast(`Cliente "${created.name}" creado exitosamente.`, 'success')
+      setIsModalOpen(false)
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'No se pudo crear el cliente. Inténtalo de nuevo.'
+      showToast(errorMessage, 'error')
     }
   }
 
@@ -245,29 +213,6 @@ export const CustomerListPage: React.FC = () => {
           </button>
         )}
       </div>
-
-      {/* Warning Alert Banner when API fails */}
-      {error && (
-        <div
-          style={{
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            padding: '0.75rem 1rem',
-            borderRadius: '6px',
-            fontSize: '0.825rem',
-            marginBottom: '1rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span>⚠️ {error}</span>
-          <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
-            (Using fallback demo data)
-          </span>
-        </div>
-      )}
 
       {/* Customers Data Table */}
       <div

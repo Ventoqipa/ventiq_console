@@ -23,17 +23,15 @@ describe('HttpCustomerRepository', () => {
       },
     ]
 
-    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockCustomers)
+    vi.spyOn(ApiClient, 'get').mockResolvedValueOnce(mockCustomers)
 
     const result = await repository.list()
     expect(result).toEqual(mockCustomers)
-    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers', {
-      method: 'GET',
-    })
+    expect(ApiClient.get).toHaveBeenCalledWith('/admin/customers')
   })
 
   it('should propagate error when getById fails', async () => {
-    vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Not found'))
+    vi.spyOn(ApiClient, 'get').mockRejectedValueOnce(new Error('Not found'))
 
     await expect(repository.getById('invalid-id')).rejects.toThrow('Not found')
   })
@@ -48,17 +46,14 @@ describe('HttpCustomerRepository', () => {
       updatedAt: '2026-10-12',
     }
 
-    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockCreated)
+    vi.spyOn(ApiClient, 'post').mockResolvedValueOnce(mockCreated)
 
     const result = await repository.create({ name: 'Acme Media', slug: 'acme-media' })
 
     expect(result).toEqual(mockCreated)
-    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: 'Acme Media',
-        slug: 'acme-media',
-      }),
+    expect(ApiClient.post).toHaveBeenCalledWith('/admin/customers', {
+      name: 'Acme Media',
+      slug: 'acme-media',
     })
   })
 
@@ -72,13 +67,12 @@ describe('HttpCustomerRepository', () => {
       updatedAt: '2026-01-02',
     }
 
-    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockUpdated)
+    vi.spyOn(ApiClient, 'patch').mockResolvedValueOnce(mockUpdated)
 
     const result = await repository.updateStatus('cust-1', 'SUSPENDED')
     expect(result.status).toBe('SUSPENDED')
-    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers/cust-1/status', {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'SUSPENDED' }),
+    expect(ApiClient.patch).toHaveBeenCalledWith('/admin/customers/cust-1/status', {
+      status: 'SUSPENDED',
     })
   })
 
@@ -98,23 +92,32 @@ describe('HttpCustomerRepository', () => {
       password: 'Password123456!',
     }
 
-    vi.spyOn(ApiClient, 'request').mockResolvedValueOnce(mockAdmin)
+    vi.spyOn(ApiClient, 'post').mockResolvedValueOnce(mockAdmin)
 
     const result = await repository.assignAdmin('cust-1', adminPayload)
 
     expect(result).toEqual(mockAdmin)
-    expect(ApiClient.request).toHaveBeenCalledWith('/admin/customers/cust-1/users', {
-      method: 'POST',
-      body: JSON.stringify({
-        fullName: 'John Doe',
-        email: 'admin@acme.com',
-        password: 'Password123456!',
-      }),
-    })
+    expect(ApiClient.post).toHaveBeenCalledWith('/admin/customers/cust-1/users', adminPayload)
+  })
+
+  it('should delete a customer via DELETE request', async () => {
+    vi.spyOn(ApiClient, 'delete').mockResolvedValueOnce(undefined)
+
+    await repository.deleteCustomer('cust-1')
+
+    expect(ApiClient.delete).toHaveBeenCalledWith('/admin/customers/cust-1')
+  })
+
+  it('should delete a customer user via DELETE request', async () => {
+    vi.spyOn(ApiClient, 'delete').mockResolvedValueOnce(undefined)
+
+    await repository.deleteCustomerUser('cust-1', 'usr-1')
+
+    expect(ApiClient.delete).toHaveBeenCalledWith('/admin/customers/cust-1/users/usr-1')
   })
 
   it('should propagate error when updateStatus API request fails', async () => {
-    vi.spyOn(ApiClient, 'request').mockRejectedValueOnce(new Error('Network error'))
+    vi.spyOn(ApiClient, 'patch').mockRejectedValueOnce(new Error('Network error'))
 
     await expect(repository.updateStatus('cust-001', 'SUSPENDED')).rejects.toThrow('Network error')
   })
