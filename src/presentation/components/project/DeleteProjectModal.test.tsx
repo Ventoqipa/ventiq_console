@@ -91,4 +91,39 @@ describe('DeleteProjectModal', () => {
     expect(confirmButton).toBeDisabled()
     expect(cancelButton).toBeDisabled()
   })
+
+  it('restores focus to fallback element if previous focus element is disconnected', () => {
+    const searchbox = document.createElement('input')
+    searchbox.setAttribute('role', 'searchbox')
+    document.body.appendChild(searchbox)
+
+    const detachedButton = document.createElement('button')
+    document.body.appendChild(detachedButton)
+    detachedButton.focus()
+
+    const { rerender } = render(
+      <DeleteProjectModal
+        isOpen={true}
+        projectName="E-commerce Redesign"
+        loading={false}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    )
+
+    document.body.removeChild(detachedButton)
+
+    rerender(
+      <DeleteProjectModal
+        isOpen={false}
+        projectName="E-commerce Redesign"
+        loading={false}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />
+    )
+
+    expect(document.activeElement).toBe(searchbox)
+    document.body.removeChild(searchbox)
+  })
 })

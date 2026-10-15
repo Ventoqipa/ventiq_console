@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Project, ProjectStatus } from '../../../domain/project/project'
 import { HttpProjectRepository } from '../../../infrastructure/repositories/httpProjectRepository'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
@@ -31,6 +31,9 @@ export const ProjectListPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false)
   const [deleting, setDeleting] = useState<boolean>(false)
 
+  // Request counter to ignore stale overlapping responses
+  const activeRequestIdRef = useRef<number>(0)
+
   const { showToast } = useToast()
 
   const fetchCustomers = useCallback(async () => {
@@ -38,25 +41,34 @@ export const ProjectListPage: React.FC = () => {
       const data = await getCustomersUseCase.execute()
       setCustomers(data)
     } catch {
-      // Ignore errors for customers fetch, as it's not critical for the main functionality
+      // Ignore non-critical customer fetch errors
     }
   }, [])
 
   const fetchProjects = useCallback(() => {
+    const requestId = ++activeRequestIdRef.current
     setLoading(true)
+
     getProjectsUseCase
       .execute({
         searchTerm,
         customerId: customerFilter !== 'ALL' ? customerFilter : undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       })
-      .then((data) => setProjects(data))
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Failed to load projects.'
-        showToast(msg, 'error')
-        setProjects([])
+      .then((data) => {
+        if (requestId === activeRequestIdRef.current) {
+          setProjects(data)
+          setLoading(false)
+        }
       })
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (requestId === activeRequestIdRef.current) {
+          const msg = err instanceof Error ? err.message : 'Failed to load projects.'
+          showToast(msg, 'error')
+          setProjects([])
+          setLoading(false)
+        }
+      })
   }, [searchTerm, customerFilter, statusFilter, showToast])
 
   useEffect(() => {

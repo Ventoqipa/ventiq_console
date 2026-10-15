@@ -37,6 +37,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false)
   const [isAssigningAdmin, setIsAssigningAdmin] = useState<boolean>(false)
+  const [pendingSuspensionAdminId, setPendingSuspensionAdminId] = useState<string | null>(null)
 
   // Delete Modals state
   const [isDeleteCustomerModalOpen, setIsDeleteCustomerModalOpen] = useState<boolean>(false)
@@ -98,39 +99,40 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     setIsUpdatingStatus(true)
 
     try {
-      // 1. Actualizar estado del Customer
+      // 1. Fetch customer projects first to prevent unhandled promise rejections
+      const projectRepo = new HttpProjectRepository()
+      const customerProjects = await projectRepo.list({ customerId: id })
+
+      // 2. Update parent customer status
       await updateCustomerStatusUseCase.execute(id, targetStatus)
 
-      // 2. Actualizar estado de los usuarios administradores asociados en paralelo
+      // 3. Prepare sub-resource patch requests together
       const userPromises = users.map((u) =>
         ApiClient.patch(`/admin/customers/${id}/users/${u.id}/status`, {
           status: targetStatus,
         })
       )
 
-      // 3. Obtener proyectos del cliente y actualizar su estado en paralelo
-      const projectRepo = new HttpProjectRepository()
-      const customerProjects = await projectRepo.list({ customerId: id })
       const projectPromises = customerProjects.map((p) =>
         ApiClient.patch(`/admin/projects/${p.id}/status`, {
           status: targetStatus,
         })
       )
 
-      // Ejecutar todas las peticiones de sub-recursos en paralelo
+      // Execute all resource updates in parallel with aggregate handling
       await Promise.all([...userPromises, ...projectPromises])
 
-      // Re-obtenemos los datos para sincronizar cliente y usuarios
-      await fetchData()
       setIsStatusModalOpen(false)
       const actionName = targetStatus === 'SUSPENDED' ? 'suspended' : 'activated'
       showToast(`${customer.name} and all associated resources were ${actionName} successfully!`, 'success')
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : 'Failed to update customer status.',
+        err instanceof Error ? err.message : 'Failed to update customer status and associated resources.',
         'error'
       )
     } finally {
+      // Always reconcile persisted state even on partial failures
+      await fetchData()
       setIsUpdatingStatus(false)
     }
   }
@@ -140,14 +142,25 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     setIsAssigningAdmin(true)
 
     try {
-      // 1. Crear el usuario administrador
-      const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
+      let adminId = pendingSuspensionAdminId
 
-      // 2. Si el Customer está suspendido, ajustar inmediatamente el estado del usuario a SUSPENDED
-      if (customer.status === 'SUSPENDED') {
-        await ApiClient.patch(`/admin/customers/${id}/users/${newAdmin.id}/status`, {
-          status: 'SUSPENDED',
-        })
+      // 1. Provision client admin only if not previously created in a partial run
+      if (!adminId) {
+        const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
+        adminId = newAdmin.id
+      }
+
+      // 2. Suspend newly assigned admin if the customer is currently suspended
+      if (customer.status === 'SUSPENDED' && adminId) {
+        try {
+          await ApiClient.patch(`/admin/customers/${id}/users/${adminId}/status`, {
+            status: 'SUSPENDED',
+          })
+          setPendingSuspensionAdminId(null)
+        } catch (err) {
+          setPendingSuspensionAdminId(adminId)
+          throw err
+        }
       }
 
       await fetchData()

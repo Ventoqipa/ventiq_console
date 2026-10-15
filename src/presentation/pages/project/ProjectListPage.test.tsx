@@ -86,6 +86,34 @@ describe('ProjectListPage UI & Actions', () => {
     expect(screen.getByText('Mobile App API')).toBeInTheDocument()
   })
 
+  it('ignores stale response when overlapping filter requests finish out of order', async () => {
+    let resolveFirstRequest: (value: typeof mockProjects) => void = () => {}
+    const firstRequestPromise = new Promise<typeof mockProjects>((resolve) => {
+      resolveFirstRequest = resolve
+    })
+
+    mockProjectList
+      .mockReturnValueOnce(firstRequestPromise)
+      .mockResolvedValueOnce([mockProjects[0]])
+
+    renderComponent()
+
+    const searchInput = screen.getByPlaceholderText(/search by project name\.\.\./i)
+    fireEvent.change(searchInput, { target: { value: 'E-commerce' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('E-commerce Redesign')).toBeInTheDocument()
+      expect(screen.queryByText('Mobile App API')).not.toBeInTheDocument()
+    })
+
+    // Resolve initial stale request late
+    resolveFirstRequest(mockProjects)
+
+    // Verify stale response did not overwrite the newer state
+    expect(screen.getByText('E-commerce Redesign')).toBeInTheDocument()
+    expect(screen.queryByText('Mobile App API')).not.toBeInTheDocument()
+  })
+
   it('triggers delete flow when delete button is clicked and modal is confirmed', async () => {
     renderComponent()
     await waitForLoadingToFinish()

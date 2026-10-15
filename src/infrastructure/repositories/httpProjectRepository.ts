@@ -16,22 +16,34 @@ interface PaginatedProjectsResponse {
 
 export class HttpProjectRepository implements IProjectRepository {
   async list(params?: ProjectFilterParams): Promise<Project[]> {
+    return this.fetchAllPages(params)
+  }
+
+  private async fetchAllPages(params?: ProjectFilterParams, page = 1): Promise<Project[]> {
     const queryParams = new URLSearchParams()
 
     if (params?.searchTerm) queryParams.append('search', params.searchTerm)
     if (params?.customerId) queryParams.append('customerId', params.customerId)
     if (params?.status && params.status !== 'ALL') queryParams.append('status', params.status)
+    queryParams.append('page', String(page))
 
-    const endpoint = queryParams.toString()
-      ? `/admin/projects?${queryParams.toString()}`
-      : '/admin/projects'
-
+    const endpoint = `/admin/projects?${queryParams.toString()}`
     const response = await ApiClient.get<Project[] | PaginatedProjectsResponse>(endpoint)
 
     if (Array.isArray(response)) {
       return response
-    } else if (response && typeof response === 'object') {
-      return response.data || response.items || response.content || []
+    }
+
+    if (response && typeof response === 'object') {
+      const items = response.data || response.items || response.content || []
+      const totalPages = response.meta?.totalPages || 1
+
+      if (page < totalPages) {
+        const nextItems = await this.fetchAllPages(params, page + 1)
+        return [...items, ...nextItems]
+      }
+
+      return items
     }
 
     return []

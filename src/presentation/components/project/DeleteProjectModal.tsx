@@ -18,27 +18,33 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
-  // Guardar y restaurar foco exclusivamente cuando el modal cambia de estado abierto/cerrado
+  const restoreFocus = () => {
+    const el = previousFocusRef.current
+    if (el && document.body.contains(el) && typeof el.focus === 'function') {
+      el.focus()
+    } else {
+      const fallback = document.querySelector<HTMLElement>('[role="searchbox"]') || document.body
+      fallback.focus()
+    }
+  }
+
+  // Save and restore focus exclusively when the modal changes between open and closed states
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement
     } else {
-      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-        previousFocusRef.current.focus()
-      }
+      restoreFocus()
     }
   }, [isOpen])
 
-  // Limpieza al desmontar
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-        previousFocusRef.current.focus()
-      }
+      restoreFocus()
     }
   }, [])
 
-  // Trampa de foco e interacciones de teclado
+  // Focus trap and keyboard interactions
   useEffect(() => {
     if (!isOpen) return
 
