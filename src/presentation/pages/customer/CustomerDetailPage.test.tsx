@@ -180,6 +180,37 @@ describe('CustomerDetailPage', () => {
     })
   })
 
+  it('suspends newly assigned admin when parent customer status is PENDING', async () => {
+    mockGetById.mockResolvedValue({ ...mockCustomerData, status: 'PENDING' })
+    mockGetAdminsByCustomerId.mockResolvedValueOnce([])
+
+    renderComponent('/customers/cust-001')
+
+    const openModalButton = await screen.findByRole('button', { name: /\+ assign user/i })
+    fireEvent.click(openModalButton)
+
+    const nameInput = screen.getByLabelText(/full name/i)
+    const emailInput = screen.getByLabelText(/email address/i)
+    const passwordInput = screen.getByLabelText(/password/i)
+
+    fireEvent.change(nameInput, { target: { value: 'Pending Admin' } })
+    fireEvent.change(emailInput, { target: { value: 'pending@acme.com' } })
+    fireEvent.change(passwordInput, { target: { value: 'SecurePassword123!' } })
+
+    const dialog = screen.getByRole('dialog')
+    const submitButton = within(dialog).getByRole('button', { name: /assign admin/i })
+
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockAssignAdmin).toHaveBeenCalled()
+      expect(ApiClient.patch).toHaveBeenCalledWith(
+        '/admin/customers/cust-001/users/admin-001/status',
+        { status: 'SUSPENDED' }
+      )
+    })
+  })
+
   it('allows suspension-only retry when assigning admin on a suspended customer fails initial suspension patch', async () => {
     mockGetById.mockResolvedValue({ ...mockCustomerData, status: 'SUSPENDED' })
     mockGetAdminsByCustomerId.mockResolvedValueOnce([])

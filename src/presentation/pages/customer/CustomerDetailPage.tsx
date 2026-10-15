@@ -150,8 +150,8 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
         adminId = newAdmin.id
       }
 
-      // 2. Suspend newly assigned admin if the customer is currently suspended
-      if (customer.status === 'SUSPENDED' && adminId) {
+      // 2. Suspend newly assigned admin if the customer is NOT Active (covers SUSPENDED and PENDING)
+      if (customer.status !== 'ACTIVE' && adminId) {
         try {
           await ApiClient.patch(`/admin/customers/${id}/users/${adminId}/status`, {
             status: 'SUSPENDED',
