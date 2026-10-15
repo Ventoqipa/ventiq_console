@@ -14,6 +14,21 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+// Mocks para ApiClient e HttpProjectRepository utilizados en el flujo en cascada
+vi.mock('../../../infrastructure/api/apiClient', () => ({
+  ApiClient: {
+    patch: vi.fn().mockResolvedValue({}),
+  },
+}))
+
+vi.mock('../../../infrastructure/repositories/httpProjectRepository', () => ({
+  HttpProjectRepository: vi.fn().mockImplementation(() => ({
+    list: vi.fn().mockResolvedValue([
+      { id: 'proj-001', name: 'Project 1', status: 'ACTIVE' },
+    ]),
+  })),
+}))
+
 const {
   mockGetById,
   mockGetAdminsByCustomerId,

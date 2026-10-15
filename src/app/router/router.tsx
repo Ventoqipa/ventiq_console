@@ -3,6 +3,7 @@ import { AdminShell } from '../../presentation/components/AdminShell'
 import { FoundationPage } from '../../presentation/pages/FoundationPage'
 import { CustomerDetailPage } from '../../presentation/pages/customer/CustomerDetailPage'
 import { CustomerListPage } from '../../presentation/pages/customer/CustomerListPage'
+import { ProjectListPage } from '../../presentation/pages/project/ProjectListPage'
 import { LoginPage } from '../../presentation/pages/LoginPage'
 
 const handleLogout = () => {
@@ -39,6 +40,10 @@ export const getRoutes = (): RouteObject[] => [
       {
         path: 'customers/:id',
         element: <CustomerDetailPage />,
+      },
+      {
+        path: 'projects',
+        element: <ProjectListPage />,
       },
     ],
   },

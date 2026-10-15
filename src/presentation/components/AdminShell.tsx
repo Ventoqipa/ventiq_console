@@ -16,12 +16,14 @@ export const AdminShell: React.FC<AdminShellProps> = ({
 
   const getBreadcrumb = () => {
     if (location.pathname.includes('/customers')) return 'Customers'
+    if (location.pathname.includes('/projects')) return 'Projects'
     return 'Overview'
   }
 
   const navItems = [
     { label: 'Overview', path: '/' },
     { label: 'Customers', path: '/customers' },
+    { label: 'Projects', path: '/projects' },
   ]
 
   return (
@@ -179,11 +181,11 @@ export const AdminShell: React.FC<AdminShellProps> = ({
               </span>
             </div>
 
-          <button
-            onClick={onLogout}
-            style={{
-                backgroundColor: '#18181b', // Fondo negro
-                color: '#ffffff',          // Texto blanco
+            <button
+              onClick={onLogout}
+              style={{
+                backgroundColor: '#18181b',
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0.4rem 0.85rem',
@@ -191,9 +193,9 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-            }}
+              }}
             >
-            Logout
+              Logout
             </button>
           </div>
         </header>

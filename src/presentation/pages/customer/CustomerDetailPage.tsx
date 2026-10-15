@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Customer, CustomerStatus } from '../../../domain/customer/customer'
 import { ClientAdmin } from '../../../domain/customer/clientAdmin'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
+import { HttpProjectRepository } from '../../../infrastructure/repositories/httpProjectRepository'
+import { ApiClient } from '../../../infrastructure/api/apiClient'
 import { CustomerRepository } from '../../../application/ports/customerRepository.port'
 import { UpdateCustomerStatusUseCase } from '../../../application/useCases/customer/updateCustomerStatus.usecase'
 import { AssignClientAdminUseCase } from '../../../application/useCases/customer/assignClientAdmin.usecase'
@@ -96,12 +98,33 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     setIsUpdatingStatus(true)
 
     try {
+      // 1. Actualizar estado del Customer
       await updateCustomerStatusUseCase.execute(id, targetStatus)
+
+      // 2. Actualizar estado de los usuarios administradores asociados en paralelo
+      const userPromises = users.map((u) =>
+        ApiClient.patch(`/admin/customers/${id}/users/${u.id}/status`, {
+          status: targetStatus,
+        })
+      )
+
+      // 3. Obtener proyectos del cliente y actualizar su estado en paralelo
+      const projectRepo = new HttpProjectRepository()
+      const customerProjects = await projectRepo.list({ customerId: id })
+      const projectPromises = customerProjects.map((p) =>
+        ApiClient.patch(`/admin/projects/${p.id}/status`, {
+          status: targetStatus,
+        })
+      )
+
+      // Ejecutar todas las peticiones de sub-recursos en paralelo
+      await Promise.all([...userPromises, ...projectPromises])
+
       // Re-obtenemos los datos para sincronizar cliente y usuarios
       await fetchData()
       setIsStatusModalOpen(false)
       const actionName = targetStatus === 'SUSPENDED' ? 'suspended' : 'activated'
-      showToast(`${customer.name} was ${actionName} successfully!`, 'success')
+      showToast(`${customer.name} and all associated resources were ${actionName} successfully!`, 'success')
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : 'Failed to update customer status.',
@@ -113,11 +136,20 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
   }
 
   const handleAssignAdmin = async (adminData: { fullName: string; email: string; password: string }) => {
-    if (!id) return
+    if (!id || !customer) return
     setIsAssigningAdmin(true)
 
     try {
-      await assignClientAdminUseCase.execute(id, adminData)
+      // 1. Crear el usuario administrador
+      const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
+
+      // 2. Si el Customer está suspendido, ajustar inmediatamente el estado del usuario a SUSPENDED
+      if (customer.status === 'SUSPENDED') {
+        await ApiClient.patch(`/admin/customers/${id}/users/${newAdmin.id}/status`, {
+          status: 'SUSPENDED',
+        })
+      }
+
       await fetchData()
       setIsAdminModalOpen(false)
       showToast('Client administrator assigned successfully!', 'success')
