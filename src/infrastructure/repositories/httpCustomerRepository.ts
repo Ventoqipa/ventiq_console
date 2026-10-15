@@ -78,7 +78,6 @@ export class HttpCustomerRepository implements CustomerRepository {
   async create(data: CreateCustomerDTO): Promise<Customer> {
     const slug = data.slug || generateSlug(data.name)
 
-    // Railway API requires { name, slug }
     const created = await ApiClient.post<RawCustomer>('/admin/customers', {
       name: data.name,
       slug,
@@ -151,23 +150,11 @@ export class HttpCustomerRepository implements CustomerRepository {
     }))
   }
 
-  async updateUserStatus(
-    customerId: string,
-    userId: string,
-    status: 'ACTIVE' | 'SUSPENDED'
-  ): Promise<ClientAdmin> {
-    const response = await ApiClient.patch<RawUser>(
-      `/admin/customers/${customerId}/users/${userId}/status`,
-      { status }
-    )
+  async deleteCustomer(id: string): Promise<void> {
+    await ApiClient.delete(`/admin/customers/${id}`)
+  }
 
-    return {
-      id: response.id || userId,
-      fullName: response.fullName || response.email?.split('@')[0] || 'Admin User',
-      email: response.email,
-      role: response.role || 'ADMIN',
-      status: response.status || status,
-      createdAt: response.createdAt || '',
-    }
+  async deleteCustomerUser(customerId: string, userId: string): Promise<void> {
+    await ApiClient.delete(`/admin/customers/${customerId}/users/${userId}`)
   }
 }

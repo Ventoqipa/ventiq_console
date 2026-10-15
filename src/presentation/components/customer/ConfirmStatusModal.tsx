@@ -164,18 +164,22 @@ export const ConfirmStatusModal: React.FC<ConfirmStatusModalProps> = ({
             onClick={onConfirm}
             disabled={loading}
             style={{
-              backgroundColor: isSuspending ? '#dc2626' : '#18181b',
+              backgroundColor: isSuspending ? '#dc2626' : '#15803d',
               color: '#ffffff',
               border: 'none',
               borderRadius: '6px',
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? 'Updating...' : `Yes, ${actionText}`}
+            {loading
+              ? isSuspending
+                ? 'Suspending...'
+                : 'Activating...'
+              : `Yes, ${actionText}`}
           </button>
         </div>
       </div>

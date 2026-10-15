@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { CreateCustomerDTO } from '../../../domain/customer/customer'
+import { useToast } from '../../context'
 
 interface CreateCustomerModalProps {
   isOpen: boolean
@@ -27,6 +28,7 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const { showToast } = useToast()
 
   if (!isOpen) return null
 
@@ -48,7 +50,9 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
       setName('')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create customer')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create customer'
+      setError(errorMessage)
+      showToast(errorMessage, 'error')
     } finally {
       setLoading(false)
     }
@@ -130,7 +134,10 @@ export const CreateCustomerModal: React.FC<CreateCustomerModalProps> = ({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (error) setError(null)
+              }}
               placeholder="e.g. Acme Corp"
               disabled={loading}
               style={{

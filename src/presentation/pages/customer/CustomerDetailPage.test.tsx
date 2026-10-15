@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-li
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { CustomerDetailPage } from './CustomerDetailPage'
+import { ToastProvider } from '../../context/ToastContext'
 
 const mockNavigate = vi.fn()
 
@@ -18,13 +19,15 @@ const {
   mockGetAdminsByCustomerId,
   mockUpdateStatus,
   mockAssignAdmin,
-  mockUpdateUserStatus,
+  mockDeleteCustomer,
+  mockDeleteCustomerUser,
 } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
   mockGetAdminsByCustomerId: vi.fn(),
   mockUpdateStatus: vi.fn(),
   mockAssignAdmin: vi.fn(),
-  mockUpdateUserStatus: vi.fn(),
+  mockDeleteCustomer: vi.fn(),
+  mockDeleteCustomerUser: vi.fn(),
 }))
 
 vi.mock('../../../infrastructure/repositories/httpCustomerRepository', () => {
@@ -36,7 +39,8 @@ vi.mock('../../../infrastructure/repositories/httpCustomerRepository', () => {
       updateCustomerStatus: mockUpdateStatus,
       assignAdmin: mockAssignAdmin,
       assignClientAdmin: mockAssignAdmin,
-      updateUserStatus: mockUpdateUserStatus,
+      deleteCustomer: mockDeleteCustomer,
+      deleteCustomerUser: mockDeleteCustomerUser,
     })),
   }
 })
@@ -66,7 +70,8 @@ describe('CustomerDetailPage', () => {
     mockGetAdminsByCustomerId.mockResolvedValue([mockAdminData])
     mockUpdateStatus.mockResolvedValue({ ...mockCustomerData, status: 'SUSPENDED' })
     mockAssignAdmin.mockResolvedValue(mockAdminData)
-    mockUpdateUserStatus.mockResolvedValue({ ...mockAdminData, status: 'SUSPENDED' })
+    mockDeleteCustomer.mockResolvedValue(undefined)
+    mockDeleteCustomerUser.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -74,14 +79,19 @@ describe('CustomerDetailPage', () => {
     vi.clearAllMocks()
   })
 
-  it('renders loading state initially and then shows customer and admin details', async () => {
+  const renderComponent = (initialEntry: string) =>
     render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route path="/customers/:id" element={<CustomerDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
     )
+
+  it('renders loading state initially and then shows customer and admin details', async () => {
+    renderComponent('/customers/cust-001')
 
     expect(screen.getByRole('status')).toHaveTextContent(/loading customer details/i)
 
@@ -94,31 +104,19 @@ describe('CustomerDetailPage', () => {
     })
   })
 
-  it('clears state and shows error message when route lookup fails', async () => {
+  it('clears state and shows error toast when route lookup fails', async () => {
     mockGetById.mockRejectedValueOnce(new Error('Customer not found'))
 
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-999']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+    renderComponent('/customers/cust-999')
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Failed to load customer details.')
+      expect(screen.getByRole('status')).toHaveTextContent('Customer not found')
       expect(screen.queryByText('Acme Corporation')).not.toBeInTheDocument()
     })
   })
 
   it('navigates back to customer list on clicking back button', async () => {
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+    renderComponent('/customers/cust-001')
 
     const backButton = await screen.findByRole('button', { name: /back to customers/i })
     fireEvent.click(backButton)
@@ -127,13 +125,7 @@ describe('CustomerDetailPage', () => {
   })
 
   it('executes status change flow successfully through modal confirmation', async () => {
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+    renderComponent('/customers/cust-001')
 
     const statusButton = await screen.findByRole('button', { name: /^suspend customer$/i })
     fireEvent.click(statusButton)
@@ -143,19 +135,14 @@ describe('CustomerDetailPage', () => {
 
     await waitFor(() => {
       expect(mockUpdateStatus).toHaveBeenCalledWith('cust-001', 'SUSPENDED')
+      expect(mockGetById).toHaveBeenCalledTimes(2)
     })
   })
 
   it('executes assign admin flow successfully when no admin is assigned', async () => {
     mockGetAdminsByCustomerId.mockResolvedValueOnce([])
 
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+    renderComponent('/customers/cust-001')
 
     const openModalButton = await screen.findByRole('button', { name: /\+ assign user/i })
     fireEvent.click(openModalButton)
@@ -178,43 +165,34 @@ describe('CustomerDetailPage', () => {
     })
   })
 
-  it('executes user status mutation to SUSPENDED when user action button is clicked', async () => {
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+  it('executes customer delete flow and navigates to customer list', async () => {
+    renderComponent('/customers/cust-001')
 
-    // Using exact regex /^suspend$/i to target only the user row action button
-    const suspendUserBtn = await screen.findByRole('button', { name: /^suspend$/i })
-    fireEvent.click(suspendUserBtn)
+    const deleteCustomerButton = await screen.findByRole('button', { name: /^delete customer$/i })
+    fireEvent.click(deleteCustomerButton)
+
+    const confirmModal = screen.getByRole('dialog')
+    const confirmDeleteBtn = within(confirmModal).getByRole('button', { name: /delete/i })
+    fireEvent.click(confirmDeleteBtn)
 
     await waitFor(() => {
-      expect(mockUpdateUserStatus).toHaveBeenCalledWith('cust-001', 'admin-001', 'SUSPENDED')
+      expect(mockDeleteCustomer).toHaveBeenCalledWith('cust-001')
+      expect(mockNavigate).toHaveBeenCalledWith('/customers')
     })
   })
 
-  it('executes user status mutation to ACTIVE when suspended user action button is clicked', async () => {
-    mockGetAdminsByCustomerId.mockResolvedValueOnce([
-      { ...mockAdminData, status: 'SUSPENDED' },
-    ])
-    mockUpdateUserStatus.mockResolvedValueOnce({ ...mockAdminData, status: 'ACTIVE' })
+  it('executes user delete flow and refreshes admin list', async () => {
+    renderComponent('/customers/cust-001')
 
-    render(
-      <MemoryRouter initialEntries={['/customers/cust-001']}>
-        <Routes>
-          <Route path="/customers/:id" element={<CustomerDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    )
+    const deleteUserButton = await screen.findByRole('button', { name: /delete user/i })
+    fireEvent.click(deleteUserButton)
 
-    const activateUserBtn = await screen.findByRole('button', { name: /activate/i })
-    fireEvent.click(activateUserBtn)
+    const confirmModal = screen.getByRole('dialog')
+    const confirmDeleteBtn = within(confirmModal).getByRole('button', { name: /delete/i })
+    fireEvent.click(confirmDeleteBtn)
 
     await waitFor(() => {
-      expect(mockUpdateUserStatus).toHaveBeenCalledWith('cust-001', 'admin-001', 'ACTIVE')
+      expect(mockDeleteCustomerUser).toHaveBeenCalledWith('cust-001', 'admin-001')
     })
   })
 })

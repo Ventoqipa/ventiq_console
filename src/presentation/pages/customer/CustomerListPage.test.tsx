@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved, cleanup 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { CustomerListPage } from './CustomerListPage'
+import { ToastProvider } from '../../context'
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -62,12 +63,17 @@ describe('CustomerListPage Filtering & Search', () => {
     }
   }
 
-  it('renders search input and status filter dropdown', async () => {
+  const renderComponent = () =>
     render(
-      <MemoryRouter>
-        <CustomerListPage />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <CustomerListPage />
+        </MemoryRouter>
+      </ToastProvider>
     )
+
+  it('renders search input and status filter dropdown', async () => {
+    renderComponent()
 
     await waitForLoadingToFinish()
 
@@ -76,11 +82,7 @@ describe('CustomerListPage Filtering & Search', () => {
   })
 
   it('filters customers by search term (name or slug)', async () => {
-    render(
-      <MemoryRouter>
-        <CustomerListPage />
-      </MemoryRouter>
-    )
+    renderComponent()
 
     await waitForLoadingToFinish()
 
@@ -102,11 +104,7 @@ describe('CustomerListPage Filtering & Search', () => {
   })
 
   it('filters customers by status dropdown', async () => {
-    render(
-      <MemoryRouter>
-        <CustomerListPage />
-      </MemoryRouter>
-    )
+    renderComponent()
 
     await waitForLoadingToFinish()
 
@@ -121,11 +119,7 @@ describe('CustomerListPage Filtering & Search', () => {
   })
 
   it('shows empty state when no customers match filter and resets filters when clicking reset button', async () => {
-    render(
-      <MemoryRouter>
-        <CustomerListPage />
-      </MemoryRouter>
-    )
+    renderComponent()
 
     await waitForLoadingToFinish()
 

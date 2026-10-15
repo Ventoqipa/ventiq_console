@@ -11,9 +11,6 @@ export interface CustomerRepository {
     customerId: string,
     adminData: AssignAdminDTO
   ): Promise<ClientAdmin>
-  updateUserStatus(
-    customerId: string,
-    userId: string,
-    status: 'ACTIVE' | 'SUSPENDED'
-  ): Promise<ClientAdmin>
+  deleteCustomer(id: string): Promise<void>
+  deleteCustomerUser(customerId: string, userId: string): Promise<void>
 }
