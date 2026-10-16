@@ -31,6 +31,7 @@ const AppRouter = () => (
     >
       <Route path="customers" element={<div>Customer List Page</div>} />
       <Route path="customers/:id" element={<div>Customer Detail Page</div>} />
+      <Route path="projects" element={<div>Projects List Page</div>} />
     </Route>
   </Routes>
 )
@@ -67,5 +68,17 @@ describe('Router Configuration', () => {
     )
 
     expect(screen.getByText('Customer Detail Page')).toBeInTheDocument()
+  })
+
+  it('allows access to protected projects list route when authenticated', () => {
+    localStorage.setItem('ventiq_auth_token', 'mock-valid-token')
+
+    render(
+      <MemoryRouter initialEntries={['/projects']}>
+        <AppRouter />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('Projects List Page')).toBeInTheDocument()
   })
 })

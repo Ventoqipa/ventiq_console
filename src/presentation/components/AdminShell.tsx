@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 interface AdminShellProps {
@@ -8,20 +8,45 @@ interface AdminShellProps {
 }
 
 export const AdminShell: React.FC<AdminShellProps> = ({
-  userName = 'Admin User',
-  userEmail = 'admin@ventiq.com',
+  userName,
+  userEmail,
   onLogout,
 }) => {
   const location = useLocation()
 
+  // Leer directamente el objeto 'user' guardado en localStorage
+  const storedUser = useMemo(() => {
+    try {
+      const rawUser = localStorage.getItem('user')
+      if (!rawUser) return null
+      return JSON.parse(rawUser)
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Extraer valores reales con fallbacks
+  const activeUserName =
+    userName ||
+    storedUser?.fullName ||
+    storedUser?.name ||
+    'Admin User'
+
+  const activeUserEmail =
+    userEmail ||
+    storedUser?.email ||
+    'admin@ventiq.com'
+
   const getBreadcrumb = () => {
     if (location.pathname.includes('/customers')) return 'Customers'
+    if (location.pathname.includes('/projects')) return 'Projects'
     return 'Overview'
   }
 
   const navItems = [
     { label: 'Overview', path: '/' },
     { label: 'Customers', path: '/customers' },
+    { label: 'Projects', path: '/projects' },
   ]
 
   return (
@@ -34,7 +59,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
         backgroundColor: '#f4f5f7',
       }}
     >
-      {/* Sidebar con borde/sombreado de ancho completo */}
+      {/* Sidebar */}
       <aside
         style={{
           width: '230px',
@@ -73,7 +98,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
             </h1>
           </div>
 
-          {/* Menú de Navegación de Ancho Completo */}
+          {/* Menú de Navegación */}
           <nav>
             <ul
               style={{
@@ -96,7 +121,6 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                       width: '100%',
                       boxSizing: 'border-box',
                       padding: '0.7rem 1.75rem',
-                      borderRadius: '0px',
                       color: isActive ? '#ffffff' : '#a1a1aa',
                       backgroundColor: isActive ? '#27272a' : 'transparent',
                       borderLeft: isActive
@@ -128,7 +152,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
         </div>
       </aside>
 
-      {/* Área Principal de Contenido */}
+      {/* Área Principal */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Top Header */}
         <header
@@ -166,7 +190,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                   lineHeight: '1.2',
                 }}
               >
-                {userName}
+                {activeUserName}
               </span>
               <span
                 style={{
@@ -175,15 +199,15 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                   display: 'block',
                 }}
               >
-                {userEmail}
+                {activeUserEmail}
               </span>
             </div>
 
-          <button
-            onClick={onLogout}
-            style={{
-                backgroundColor: '#18181b', // Fondo negro
-                color: '#ffffff',          // Texto blanco
+            <button
+              onClick={onLogout}
+              style={{
+                backgroundColor: '#18181b',
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0.4rem 0.85rem',
@@ -191,14 +215,14 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-            }}
+              }}
             >
-            Logout
+              Logout
             </button>
           </div>
         </header>
 
-        {/* Dynamic Route Content */}
+        {/* Dynamic Content */}
         <main style={{ padding: '1.25rem 1.75rem', flex: 1 }}>
           <Outlet />
         </main>

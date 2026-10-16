@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { CustomerDetailPage } from './CustomerDetailPage'
 import { ToastProvider } from '../../context/ToastContext'
+import { ApiClient } from '../../../infrastructure/api/apiClient'
 
 const mockNavigate = vi.fn()
 
@@ -13,6 +14,20 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   }
 })
+
+vi.mock('../../../infrastructure/api/apiClient', () => ({
+  ApiClient: {
+    patch: vi.fn().mockResolvedValue({}),
+  },
+}))
+
+vi.mock('../../../infrastructure/repositories/httpProjectRepository', () => ({
+  HttpProjectRepository: vi.fn().mockImplementation(() => ({
+    list: vi.fn().mockResolvedValue([
+      { id: 'proj-001', name: 'Project 1', status: 'ACTIVE' },
+    ]),
+  })),
+}))
 
 const {
   mockGetById,
@@ -162,6 +177,74 @@ describe('CustomerDetailPage', () => {
 
     await waitFor(() => {
       expect(mockAssignAdmin).toHaveBeenCalled()
+    })
+  })
+
+  it('suspends newly assigned admin when parent customer status is PENDING', async () => {
+    mockGetById.mockResolvedValue({ ...mockCustomerData, status: 'PENDING' })
+    mockGetAdminsByCustomerId.mockResolvedValueOnce([])
+
+    renderComponent('/customers/cust-001')
+
+    const openModalButton = await screen.findByRole('button', { name: /\+ assign user/i })
+    fireEvent.click(openModalButton)
+
+    const nameInput = screen.getByLabelText(/full name/i)
+    const emailInput = screen.getByLabelText(/email address/i)
+    const passwordInput = screen.getByLabelText(/password/i)
+
+    fireEvent.change(nameInput, { target: { value: 'Pending Admin' } })
+    fireEvent.change(emailInput, { target: { value: 'pending@acme.com' } })
+    fireEvent.change(passwordInput, { target: { value: 'SecurePassword123!' } })
+
+    const dialog = screen.getByRole('dialog')
+    const submitButton = within(dialog).getByRole('button', { name: /assign admin/i })
+
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockAssignAdmin).toHaveBeenCalled()
+      expect(ApiClient.patch).toHaveBeenCalledWith(
+        '/admin/customers/cust-001/users/admin-001/status',
+        { status: 'SUSPENDED' }
+      )
+    })
+  })
+
+  it('allows suspension-only retry when assigning admin on a suspended customer fails initial suspension patch', async () => {
+    mockGetById.mockResolvedValue({ ...mockCustomerData, status: 'SUSPENDED' })
+    mockGetAdminsByCustomerId.mockResolvedValueOnce([])
+    vi.mocked(ApiClient.patch).mockRejectedValueOnce(new Error('Network error'))
+
+    renderComponent('/customers/cust-001')
+
+    const openModalButton = await screen.findByRole('button', { name: /\+ assign user/i })
+    fireEvent.click(openModalButton)
+
+    const nameInput = screen.getByLabelText(/full name/i)
+    const emailInput = screen.getByLabelText(/email address/i)
+    const passwordInput = screen.getByLabelText(/password/i)
+
+    fireEvent.change(nameInput, { target: { value: 'Jane Doe' } })
+    fireEvent.change(emailInput, { target: { value: 'jane@acme.com' } })
+    fireEvent.change(passwordInput, { target: { value: 'SecurePassword123!' } })
+
+    const dialog = screen.getByRole('dialog')
+    const submitButton = within(dialog).getByRole('button', { name: /assign admin/i })
+
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockAssignAdmin).toHaveBeenCalledTimes(1)
+    })
+
+    // Subsequent submission re-attempts ONLY status PATCH, skipping duplicate creation
+    vi.mocked(ApiClient.patch).mockResolvedValueOnce({})
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockAssignAdmin).toHaveBeenCalledTimes(1)
+      expect(ApiClient.patch).toHaveBeenCalledWith('/admin/customers/cust-001/users/admin-001/status', { status: 'SUSPENDED' })
     })
   })
 

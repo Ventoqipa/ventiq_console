@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Customer, CustomerStatus } from '../../../domain/customer/customer'
 import { ClientAdmin } from '../../../domain/customer/clientAdmin'
 import { HttpCustomerRepository } from '../../../infrastructure/repositories/httpCustomerRepository'
+import { HttpProjectRepository } from '../../../infrastructure/repositories/httpProjectRepository'
+import { ApiClient } from '../../../infrastructure/api/apiClient'
 import { CustomerRepository } from '../../../application/ports/customerRepository.port'
 import { UpdateCustomerStatusUseCase } from '../../../application/useCases/customer/updateCustomerStatus.usecase'
 import { AssignClientAdminUseCase } from '../../../application/useCases/customer/assignClientAdmin.usecase'
@@ -35,6 +37,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false)
   const [isAssigningAdmin, setIsAssigningAdmin] = useState<boolean>(false)
+  const [pendingSuspensionAdminId, setPendingSuspensionAdminId] = useState<string | null>(null)
 
   // Delete Modals state
   const [isDeleteCustomerModalOpen, setIsDeleteCustomerModalOpen] = useState<boolean>(false)
@@ -96,28 +99,70 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     setIsUpdatingStatus(true)
 
     try {
+      // 1. Fetch customer projects first to prevent unhandled promise rejections
+      const projectRepo = new HttpProjectRepository()
+      const customerProjects = await projectRepo.list({ customerId: id })
+
+      // 2. Update parent customer status
       await updateCustomerStatusUseCase.execute(id, targetStatus)
-      // Re-obtenemos los datos para sincronizar cliente y usuarios
-      await fetchData()
+
+      // 3. Prepare sub-resource patch requests together
+      const userPromises = users.map((u) =>
+        ApiClient.patch(`/admin/customers/${id}/users/${u.id}/status`, {
+          status: targetStatus,
+        })
+      )
+
+      const projectPromises = customerProjects.map((p) =>
+        ApiClient.patch(`/admin/projects/${p.id}/status`, {
+          status: targetStatus,
+        })
+      )
+
+      // Execute all resource updates in parallel with aggregate handling
+      await Promise.all([...userPromises, ...projectPromises])
+
       setIsStatusModalOpen(false)
       const actionName = targetStatus === 'SUSPENDED' ? 'suspended' : 'activated'
-      showToast(`${customer.name} was ${actionName} successfully!`, 'success')
+      showToast(`${customer.name} and all associated resources were ${actionName} successfully!`, 'success')
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : 'Failed to update customer status.',
+        err instanceof Error ? err.message : 'Failed to update customer status and associated resources.',
         'error'
       )
     } finally {
+      // Always reconcile persisted state even on partial failures
+      await fetchData()
       setIsUpdatingStatus(false)
     }
   }
 
   const handleAssignAdmin = async (adminData: { fullName: string; email: string; password: string }) => {
-    if (!id) return
+    if (!id || !customer) return
     setIsAssigningAdmin(true)
 
     try {
-      await assignClientAdminUseCase.execute(id, adminData)
+      let adminId = pendingSuspensionAdminId
+
+      // 1. Provision client admin only if not previously created in a partial run
+      if (!adminId) {
+        const newAdmin = await assignClientAdminUseCase.execute(id, adminData)
+        adminId = newAdmin.id
+      }
+
+      // 2. Suspend newly assigned admin if the customer is NOT Active (covers SUSPENDED and PENDING)
+      if (customer.status !== 'ACTIVE' && adminId) {
+        try {
+          await ApiClient.patch(`/admin/customers/${id}/users/${adminId}/status`, {
+            status: 'SUSPENDED',
+          })
+          setPendingSuspensionAdminId(null)
+        } catch (err) {
+          setPendingSuspensionAdminId(adminId)
+          throw err
+        }
+      }
+
       await fetchData()
       setIsAdminModalOpen(false)
       showToast('Client administrator assigned successfully!', 'success')
